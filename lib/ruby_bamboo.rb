@@ -92,6 +92,7 @@ class RubyBamboo
       run_rails_actions
       build_gems_manifest
       build_bundler
+      create_database_yml
       ruby_prune_build_dir
       copy_prebuilt_gems
       install_addons
@@ -270,6 +271,57 @@ class RubyBamboo
     Rush.bash "cp #{bundler_config} #{bundler_config_cache.to_s}"
 
     ENV['GIT_DIR'] = git_dir
+  end
+
+  def create_database_yml
+    return unless build_dir["config/"].exists?
+    File.open(build_dir["config/database.yml"].full_path, "w") do |file|
+      file.puts <<-DATABASE_YML
+<%
+
+require 'cgi'
+require 'uri'
+
+begin
+  uri = URI.parse(ENV["DATABASE_URL"])
+rescue URI::InvalidURIError
+  raise "Invalid DATABASE_URL"
+end
+
+raise "No RACK_ENV or RAILS_ENV found" unless ENV["RAILS_ENV"] || ENV["RACK_ENV"]
+
+def attribute(name, value)
+  value ? "\#{name}: \#{value}" : ""
+end
+
+adapter = uri.scheme
+adapter = "postgresql" if adapter == "postgres"
+
+database = (uri.path || "").split("/")[1]
+
+username = uri.user
+password = uri.password
+
+host = uri.host
+port = uri.port
+
+params = CGI.parse(uri.query || "")
+
+%>
+
+<%= ENV["RAILS_ENV"] || ENV["RACK_ENV"] %>:
+  <%= attribute "adapter",  adapter %>
+  <%= attribute "database", database %>
+  <%= attribute "username", username %>
+  <%= attribute "password", password %>
+  <%= attribute "host",     host %>
+  <%= attribute "port",     port %>
+
+<% params.each do |key, value| %>
+  <%= key %>: <%= value.first %>
+<% end %>
+      DATABASE_YML
+    end
   end
 
   def ruby_vm
