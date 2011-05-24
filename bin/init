@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+# bin/init
+
+require "rubygems"
+require File.join(File.dirname(__FILE__), "..", "lib", "ruby_bamboo")
+STDOUT.sync = STDERR.sync = true
+RubyBamboo.load
+RubyBamboo.init
