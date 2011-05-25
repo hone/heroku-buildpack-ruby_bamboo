@@ -274,7 +274,7 @@ class RubyBamboo
   end
 
   def create_database_yml
-    return unless build_dir["config/"].exists?
+    build_dir.bash("mkdir -p config/")
     File.open(build_dir["config/database.yml"].full_path, "w") do |file|
       file.puts <<-DATABASE_YML
 <%
