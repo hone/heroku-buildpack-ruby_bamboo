@@ -1,0 +1,9 @@
+.DS\_Store
+.svn/
+*~
+pkg/
+*.gem
+!rails
+Manifest*
+.idea/
+tmp/
