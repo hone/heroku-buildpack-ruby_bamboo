@@ -57,18 +57,4 @@ module Utils
     message "       #{output}" if last and output != ""
     output
   end
-
-  def self.log(msg, e=nil)
-    if !e
-      full_msg = "slugc #{msg}"
-      IO.popen("logger -t slugc[#{$$}] -p user.notice", "w") { |io| io.write(full_msg) }
-    else
-      full_msg = "slugc #{msg} class=#{e.class} message='#{e.message}' trace='#{e.backtrace[0..3].join(",")}'"
-      IO.popen("logger -t slugc[#{$$}] -p user.error", "w") { |io| io.write(full_msg) }
-    end
-  end
-
-  def self.userlog(heroku_log_token, msg)
-    IO.popen("logger -t #{heroku_log_token}[slugc] -p user.notice", "w") { |io| io.write(msg) }
-  end
 end

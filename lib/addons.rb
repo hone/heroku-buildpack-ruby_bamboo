@@ -4,7 +4,7 @@ module RubyBamboo::Addons
     :exceptional      => { :url => 'git://github.com/contrast/exceptional.git' },
     :gmail_smtp       => { :url => 'git://github.com/adamwiggins/gmail_smtp.git' },
     :quick_sendgrid   => { :url => 'git://github.com/pedro/quick_sendgrid.git' },
-    :rpm              => { :url => 'git://github.com/newrelic/rpm.git', :tag => "3.0.0" },
+    :rpm              => { :url => 'git://github.com/newrelic/rpm.git', :tag => "3.0.1" },
   }
 
   def self.addons_dir
