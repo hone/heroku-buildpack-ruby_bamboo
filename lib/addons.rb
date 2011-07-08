@@ -11,43 +11,6 @@ module RubyBamboo::Addons
     Rush[File.join(File.expand_path(File.dirname(__FILE__)), "..", "vendor", "addons/")]
   end
 
-  def self.pull_all
-    puts("ruby_bamboo addons pull_all create_dir dir=#{addons_dir.full_path}")
-    addons_dir.create
-
-    ADDONS_REPOS.each do |name, addon_git|
-      url = addon_git[:url]
-      begin
-        SystemTimer.timeout(15) do
-          addon = addons_dir["#{name}/"]
-          if addon.exists?
-            puts("ruby_bamboo addons pull event=start name=#{name} url=#{url} dir=#{addon.full_path}")
-            addon.bash "git pull origin master"
-            puts("ruby_bamboo addons pull event=finish name=#{name}")
-          else
-            puts("ruby_bamboo addons clone event=start name=#{name} url=#{url} dir=#{addon.full_path}")
-            addons_dir.bash "git clone #{url} #{name}"
-            puts("ruby_bamboo addons pull event=finish name=#{name}")
-          end
-
-          addon.bash "git remote update"
-
-          if tag = addon_git[:tag]
-            puts("ruby_bamboo addons checkout event=start name=#{name} tag=#{tag}")
-            addon.bash "git checkout refs/tags/#{tag}"
-            puts("ruby_bamboo addons checkout event=finish name=#{name} tag=#{tag}")
-          else
-            puts("ruby_bamboo addons checkout event=start name=#{name} branch=master")
-            addon.bash "git checkout refs/heads/master"
-            puts("ruby_bamboo addons checkout event=finish name=#{name} branch=master")
-          end
-        end
-      rescue Timeout::Error
-        puts("ruby_bamboo addons event=timeout name=#{name}")
-      end
-    end
-  end
-
   def incompatible_addon?(addon)
     if addon.kind_of?(Regexp)
       matches = addons.select { |a| !a.match(addon).nil? }

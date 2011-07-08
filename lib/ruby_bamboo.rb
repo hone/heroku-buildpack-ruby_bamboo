@@ -7,17 +7,6 @@ class RubyBamboo
   include RailsActions
   include Addons
 
-  def self.load
-    require "rubygems"
-    require "rush"
-    require "system_timer"
-  end
-
-  def self.init
-    RubyBamboo::Addons.pull_all
-    RubyBamboo::RailsActions.pull_all
-  end
-
   attr_reader :repo_dir, :build_dir, :head, :prev, :stack, :requested_stack, :env, :heroku_log_token, :addons, :addons_stacks
   attr_reader :language_pack
 

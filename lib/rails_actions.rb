@@ -12,30 +12,6 @@ module RubyBamboo::RailsActions
     Rush[File.join(File.expand_path(File.dirname(__FILE__)), "..", "vendor", "plugins/")]
   end
 
-  def self.pull_all
-    puts("ruby_bamboo plugins pull_all ensure_dir dir=#{plugins_dir.full_path}")
-    plugins_dir.create unless plugins_dir.exists?
-
-    PLUGINS.each do |name, url|
-      begin
-        SystemTimer.timeout(15) do
-          plugin = plugins_dir["#{name}/"]
-          if plugin.exists?
-            puts("ruby_bamboo plugins pull event=start name=#{name} url=#{url} dir=#{plugin.full_path}")
-            plugin.bash "git pull origin master"
-            puts("ruby_bamboo plugins pull event=finish name=#{name}")
-          else
-            puts("ruby_bamboo plugins clone event=start name=#{name} url=#{url} dir=#{plugin.full_path}")
-            plugins_dir.bash "git clone #{url} #{name}"
-            puts("ruby_bamboo plugins clone event=finish name=#{name}")
-          end
-        end
-      rescue Timeout::Error
-        puts("ruby_bambo plugins event=timeout name=#{name}")
-      end
-    end
-  end
-
   def run_rails_actions
     if language_pack == :rails
       run_aspen_rails_checks
