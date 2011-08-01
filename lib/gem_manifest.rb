@@ -85,7 +85,7 @@ class RubyBamboo::GemManifest
     def run(opts={})
       force = !!opts[:force]
 
-      if `git --git-dir #{@slug.repo_dir.full_path} ls-tree #{@slug.head}`.grep(/\s\.gems$/).empty?
+      if !@slug.dot_gems_exists?
         # no .gems file present. remove any gems dir.
         if opts[:force_gems] && opts[:force_gems].size > 0 # we need to install some gems manually
           install_gems('', opts[:force_gems])

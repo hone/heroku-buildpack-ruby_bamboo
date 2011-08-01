@@ -85,6 +85,7 @@ class RubyBamboo
   def compile
     if RUBY_STACKS.include?(target_stack)
       run_rails_actions
+      check_for_dot_gems_and_gemfile
       build_gems_manifest
       build_bundler
       create_database_yml
@@ -150,6 +151,17 @@ class RubyBamboo
       gems_build_dir.copy_to build_dir['.gems/']
     elsif gems_cache_dir.exists?
       gems_cache_dir.copy_to build_dir['.gems/']
+    end
+  end
+
+  def dot_gems_exists?
+    `git --git-dir #{repo_dir.full_path} ls-tree #{head}`.grep(/\s\.gems$/).any?
+  end
+
+  def check_for_dot_gems_and_gemfile
+    if dot_gems_exists? && gemfile.exists?
+      message "-----> WARNING: Both .gems and Gemfile are detected.\n"
+      message "       Please use one of the two.\n"
     end
   end
 
