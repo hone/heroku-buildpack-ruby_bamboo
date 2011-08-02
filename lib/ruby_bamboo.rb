@@ -74,7 +74,7 @@ class RubyBamboo
   end
 
   def config_vars
-    nil
+    { "PATH" => "/app/bin:#{ruby_path}" }
   end
 
   def minor_stack
@@ -256,6 +256,8 @@ class RubyBamboo
         message " !     See http://devcenter.heroku.com/articles/bundler\n"
         message "\n"
       end
+
+      command += " --binstubs"
 
       retval = Utils.spawn_nobuffer(command)
       if retval != 0
