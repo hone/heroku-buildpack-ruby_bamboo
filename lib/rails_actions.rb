@@ -76,7 +76,7 @@ module RubyBamboo::RailsActions
   end
 
   def install_caches_page_via_http_plugin_path
-    '/usr/local/plugins/caches_page_via_http'
+    RubyBamboo::RailsActions.plugins_dir['caches_page_via_http']
   end
 
   def install_caches_page_via_http
