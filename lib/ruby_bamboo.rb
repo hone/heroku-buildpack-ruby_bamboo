@@ -65,7 +65,7 @@ class RubyBamboo
   end
 
   def name
-    language_pack.to_s.capitalize
+    "Ruby/#{language_pack.to_s.capitalize}"
   end
 
   def default_process_types
