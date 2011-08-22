@@ -134,12 +134,13 @@ class RubyBamboo::GemManifest
       if preinstalled?(gem)
         Utils.message "-----> Skipping #{gem['name']} #{version} - this gem is installed by default on Heroku\n"
       else
+        proxy =  Utils.slot =~ /codex/ ? "--http-proxy http://localhost:3128" : ""
         command = [
           "export PATH=#{@slug.ruby_path};",
           "export GEM_HOME=#{@slug.gems_build_dir};",
           "gem install",
           escape(gem['name']),
-          "--http-proxy http://localhost:3128",
+          proxy,
           "--no-ri",
           "--no-rdoc",
           "--bindir=#{@slug.repo_dir.full_path}bin",
