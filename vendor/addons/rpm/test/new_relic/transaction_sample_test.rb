@@ -6,7 +6,7 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
 
   def setup
     @connection_stub = Mocha::Mockery.instance.named_mock('connection')
-    @connection_stub.stubs(:execute).returns('QUERY RESULT')
+    @connection_stub.stubs(:execute).returns([['QUERY RESULT']])
 
     NewRelic::TransactionSample.stubs(:get_connection).returns @connection_stub
     @t = make_sql_transaction(::SQL_STATEMENT, ::SQL_STATEMENT)
@@ -19,7 +19,7 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
   def test_not_record_sql_when_record_sql_off
     s = @t.prepare_to_send(:explain_sql => 0.00000001)
     s.each_segment do |segment|
-      assert_nil segment.params[:explanation]
+      assert_nil segment.params[:explain_plan]
       assert_nil segment.params[:sql]
     end
   end
@@ -29,7 +29,7 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
     got_one = false
     s.each_segment do |segment|
       fail if segment.params[:obfuscated_sql]
-      got_one = got_one || segment.params[:explanation] || segment.params[:sql]
+      got_one = got_one || segment.params[:explain_plan] || segment.params[:sql]
     end
     assert got_one
   end
@@ -40,7 +40,7 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
 
     got_one = false
     s.each_segment do |segment|
-      got_one = got_one || segment.params[:explanation] || segment.params[:sql]
+      got_one = got_one || segment.params[:explain_plan] || segment.params[:sql]
     end
 
     assert got_one
@@ -77,22 +77,16 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
   end
 
   def test_have_explains
-
     s = @t.prepare_to_send(:record_sql => :obfuscated, :explain_sql => 0.00000001)
-
-    explain_count = 0
+    
     s.each_segment do |segment|
-      if segment.params[:explanation]
-        explanations = segment.params[:explanation]
+      if segment.params[:explain_plan]
+        explanation = segment.params[:explain_plan]
 
-        explanations.each do |explanation|
-          assert_kind_of Array, explanation
-          assert_equal "QUERY RESULT", explanation.join('')
-          explain_count += 1
-        end
+        assert_kind_of Array, explanation
+        assert_equal([nil, [["QUERY RESULT"]]], explanation)
       end
     end
-    assert_equal 2, explain_count
   end
 
   def test_not_record_sql_without_record_sql_option
@@ -104,7 +98,7 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
     s = t.prepare_to_send(:explain_sql => 0.00000001)
 
     s.each_segment do |segment|
-      assert_nil segment.params[:explanation]
+      assert_nil segment.params[:explain_plan]
       assert_nil segment.params[:sql]
     end
   end
@@ -116,4 +110,55 @@ class NewRelic::TransactionSampleTest < Test::Unit::TestCase
     end
   end
 
+  def test_path_string
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    fake_segment = mock('segment')
+    fake_segment.expects(:path_string).returns('a path string')
+    s.instance_eval do
+      @root_segment = fake_segment
+    end
+
+    assert_equal('a path string', s.path_string)
+  end
+
+  def test_params_equals
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    s.params = {:params => 'hash' }
+    assert_equal({:params => 'hash'}, s.params, "should have the specified hash, but instead was #{s.params}")
+  end
+
+  class Hat
+    # just here to mess with the to_s logic in transaction samples
+  end
+
+  def test_to_s_with_bad_object
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    s.params[:fake] = Hat.new
+    assert_raise(RuntimeError) do
+      s.to_s
+    end
+  end
+  
+  def test_to_s_includes_keys
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    s.params[:fake_key] = 'a fake param'
+    assert(s.to_s.include?('fake_key'), "should include 'fake_key' but instead was (#{s.to_s})")
+    assert(s.to_s.include?('a fake param'), "should include 'a fake param' but instead was (#{s.to_s})")
+  end
+
+  def test_find_segment
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    fake_segment = mock('segment')
+    fake_segment.expects(:find_segment).with(1).returns('a segment')
+    s.instance_eval do
+      @root_segment = fake_segment
+    end
+
+    assert_equal('a segment', s.find_segment(1))
+  end
+
+  def test_timestamp
+    s = @t.prepare_to_send(:explain_sql => 0.1)
+    assert(s.timestamp.instance_of?(Float), "s.timestamp should be a Float, but is #{s.timestamp.class.inspect}")
+  end
 end

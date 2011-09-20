@@ -17,6 +17,7 @@ module NewRelic
 
           # Capture db config if we are going to try to get the explain plans
           if (defined?(ActiveRecord::ConnectionAdapters::MysqlAdapter) && self.is_a?(ActiveRecord::ConnectionAdapters::MysqlAdapter)) ||
+              (defined?(ActiveRecord::ConnectionAdapters::Mysql2Adapter) && self.is_a?(ActiveRecord::ConnectionAdapters::Mysql2Adapter)) ||
               (defined?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter) && self.is_a?(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter))
             supported_config = @config
           end
@@ -87,7 +88,11 @@ DependencyDetection.defer do
   depends_on do
     !NewRelic::Control.instance['disable_activerecord_instrumentation']
   end
-
+  
+  executes do
+    NewRelic::Agent.logger.debug 'Installing Rails ActiveRecord instrumentation'
+  end
+  
   executes do
     ActiveRecord::ConnectionAdapters::AbstractAdapter.module_eval do
       include ::NewRelic::Agent::Instrumentation::ActiveRecordInstrumentation

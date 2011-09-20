@@ -72,22 +72,21 @@ class NewRelic::Agent::ErrorCollectorTest < Test::Unit::TestCase
 
     @error_collector.notice_error(Exception.new("message"), :metric => 'second', :request_params => {:x => 'y'})
     @error_collector.notice_error(Exception.new("message"), :metric => 'path', :request_params => {:x => 'y'})
-    @error_collector.notice_error(Exception.new("message"), :metric => 'path', :request_params => {:x => 'y'})
+    @error_collector.notice_error(Exception.new("message"), :metric => 'last', :request_params => {:x => 'y'})
 
     errors = @error_collector.harvest_errors(errors)
 
-    assert_equal 1, errors.length
+    assert_equal 4, errors.length
     assert_equal 'first', errors.first.path
+    assert_equal 'last', errors.last.path
 
-    # add two more
-    @error_collector.notice_error(Exception.new("message"), :metric => 'path', :request_params => {:x => 'y'})
+    @error_collector.notice_error(Exception.new("message"), :metric => 'first', :request_params => {:x => 'y'})
     @error_collector.notice_error(Exception.new("message"), :metric => 'last', :request_params => {:x => 'y'})
 
     errors = @error_collector.harvest_errors(nil)
-    assert_equal 5, errors.length
-    assert_equal 'second', errors.first.path
+    assert_equal 2, errors.length
+    assert_equal 'first', errors.first.path
     assert_equal 'last', errors.last.path
-
   end
 
   def test_queue_overflow
@@ -145,22 +144,29 @@ class NewRelic::Agent::ErrorCollectorTest < Test::Unit::TestCase
   end
 
   def test_exclude_block
-    @error_collector.ignore_error_filter do |e|
-      if e.is_a? IOError
-        nil
-      else
-        e
-      end
-    end
-
+    NewRelic::Agent.logger.expects(:error).never
+    @error_collector.ignore_error_filter &wrapped_filter_proc
+        
     @error_collector.notice_error(IOError.new("message"), :metric => 'path', :request_params => {:x => 'y'})
-
+    @error_collector.notice_error(Exception.new("message"), :metric => 'path', :request_params => {:x => 'y'})
+    
     errors = @error_collector.harvest_errors([])
 
-    assert_equal 0, errors.length
+    assert_equal 1, errors.length
   end
 
   private
+  
+  def wrapped_filter_proc
+    Proc.new do |e|
+      if e.is_a? IOError
+        return nil
+      else
+        return e
+      end
+    end
+  end
+  
   def silence_stream(*args)
     super
   rescue NoMethodError

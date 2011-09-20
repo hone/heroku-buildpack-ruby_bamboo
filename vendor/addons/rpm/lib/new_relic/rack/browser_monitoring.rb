@@ -9,6 +9,12 @@ module NewRelic::Rack
 
     # method required by Rack interface
     def call(env)
+      
+      # clear out the thread locals we use in case this is a static request
+      Thread.current[:newrelic_most_recent_transaction] = nil
+      Thread.current[:newrelic_start_time] = Time.now
+      Thread.current[:newrelic_queue_time] = 0
+      
       result = @app.call(env)   # [status, headers, response]
 
       if (NewRelic::Agent.browser_timing_header != "") && should_instrument?(result[0], result[1])
@@ -30,21 +36,22 @@ module NewRelic::Rack
 
     def autoinstrument_source(response, headers)
       source = nil
-      response.each {|fragment| (source) ? (source << f) : (source = fragment)}
-
+      response.each {|fragment| (source) ? (source << fragment) : (source = fragment)}
+      return nil unless source
+      
       body_start = source.index("<body")
       body_close = source.rindex("</body>")
 
       if body_start && body_close
         footer = NewRelic::Agent.browser_timing_footer
         header = NewRelic::Agent.browser_timing_header
-
-        head_open = source.index("<head")
-
-        if head_open
-          head_close = source.index(">", head_open)
-
-          head_pos = head_close + 1
+                  
+        if source.include?('X-UA-Compatible')
+          # put at end of header if UA-Compatible meta tag found
+          head_pos = source.index("</head>")          
+        elsif head_open = source.index("<head")
+          # put at the beginning of the header
+          head_pos = source.index(">", head_open) + 1
         else
           # put the header right above body start
           head_pos = body_start
