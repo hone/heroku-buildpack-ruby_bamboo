@@ -1,7 +1,7 @@
 module RubyBamboo::Addons
   ADDONS_REPOS = {
     :hoptoad_notifier => { :url => 'git://github.com/adamwiggins/hoptoad_notifier.git' },
-    :exceptional      => { :url => 'git://github.com/contrast/exceptional.git' },
+    :exceptional      => { :url => 'git://github.com/exceptional/exceptional.git' },
     :gmail_smtp       => { :url => 'git://github.com/adamwiggins/gmail_smtp.git' },
     :quick_sendgrid   => { :url => 'git://github.com/pedro/quick_sendgrid.git' },
     :rpm              => { :url => 'git://github.com/newrelic/rpm.git', :tag => "3.0.1" },
