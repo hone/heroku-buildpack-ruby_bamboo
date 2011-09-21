@@ -148,6 +148,7 @@ module RubyBamboo::Addons
     config[rails_env]['error_collector']['enabled']        = false if env['NEW_RELIC_ERROR_COLLECTOR_ENABLED'] == 'false'
     config[rails_env]['error_collector']['capture_source'] = false if env['NEW_RELIC_ERROR_COLLECTOR_CAPTURE_SOURCE'] == 'false'
     config[rails_env]['error_collector']['ignore_errors']  = env['NEW_RELIC_ERROR_COLLECTOR_IGNORE_ERRORS'] if env.key?('NEW_RELIC_ERROR_COLLECTOR_IGNORE_ERRORS')
+    config[rails_env]['log_file_path']                     = 'STDOUT'
     build_dir['config/'].create
     build_dir['config/newrelic.yml'].write config.to_yaml
     system "chmod -R go+rx #{build_dir['config/newrelic.yml']}"
