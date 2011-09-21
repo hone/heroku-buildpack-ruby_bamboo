@@ -130,7 +130,7 @@ module RubyBamboo::Addons
   end
 
   def install_new_relic
-    if !env['NEW_RELIC_LICENSE_KEY'] || !env['NEW_RELIC_APPNAME']
+    if !(env['NEW_RELIC_LICENSE_KEY'] && (env['NEW_RELIC_APPNAME'] || env['NEW_RELIC_APP_NAME']))
       message "-----> New Relic is not configured. Skipping\n"
       return
     end
