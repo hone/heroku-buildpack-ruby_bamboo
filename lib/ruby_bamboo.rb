@@ -212,7 +212,7 @@ class RubyBamboo
     end
 
     if bundle_without = user_bundle_without
-      bundle_without.gsub!(/[^a-z :]/, '')
+      bundle_without.gsub!(/[^a-z_ :]/, '')
       bundle_without.gsub!(/ /, ':')
     end
 
