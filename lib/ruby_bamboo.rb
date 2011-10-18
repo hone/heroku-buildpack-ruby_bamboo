@@ -70,16 +70,12 @@ class RubyBamboo
 
   def default_process_types
     {"web"    => "thin -p $PORT -e $RACK_ENV -R $HEROKU_RACK start",
-     "worker" => "rake jobs:work",
-     "rake"   => default_rake }
+     "worker" => bundle_exec("rake jobs:work"),
+     "rake"   => bundle_exec("rake") }
   end
 
-  def default_rake
-    if gemfile.exists?
-      "bundle exec rake"
-    else
-      "rake"
-    end
+  def bundle_exec(binary)
+    gemfile.exists? ? "bundle exec #{binary}" : binary
   end
 
   def config_vars
