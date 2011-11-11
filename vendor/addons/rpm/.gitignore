@@ -8,6 +8,10 @@ pkg/
 Manifest*
 .idea/
 tmp/
+TAGS
+tags
+*.swp
+*.swo
 
 /log/
 /lerg/

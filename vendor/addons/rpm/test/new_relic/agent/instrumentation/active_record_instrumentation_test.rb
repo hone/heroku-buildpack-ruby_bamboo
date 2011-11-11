@@ -3,13 +3,9 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
   require 'active_record_fixtures'
   include NewRelic::Agent::Instrumentation::ControllerInstrumentation
 
-  @@setup = false
   def setup
     super
-    unless @@setup
-      NewRelic::Agent.manual_start
-      @setup = true
-    end
+    NewRelic::Agent.manual_start
     ActiveRecordFixtures.setup
     NewRelic::Agent.instance.transaction_sampler.reset!
     NewRelic::Agent.instance.stats_engine.clear_stats
@@ -89,7 +85,9 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
       ActiveRecord/all
       ActiveRecord/find
       ActiveRecord/ActiveRecordFixtures::Order/find
-      Database/SQL/insert]
+      Database/SQL/insert
+      RemoteService/sql/mysql/localhost
+    ]
 
     if NewRelic::Control.instance.rails_version < '2.1.0'
       expected += %W[ActiveRecord/save ActiveRecord/ActiveRecordFixtures::Order/save]
@@ -149,6 +147,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
       ActiveRecord/ActiveRecordFixtures::Order/find
       ActiveRecord/create
       Database/SQL/other
+      RemoteService/sql/mysql/localhost      
       ActiveRecord/ActiveRecordFixtures::Order/create]
 
     if NewRelic::Control.instance.rails_version < '2.1.0'
@@ -183,6 +182,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
     ActiveRecord/find
     ActiveRecord/ActiveRecordFixtures::Order/find
     ActiveRecord/ActiveRecordFixtures::Shipment/find
+    RemoteService/sql/mysql/localhost
     ]
 
     assert_calls_metrics(*expected_metrics) do
@@ -248,6 +248,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
 
     expected_metrics = %W[
     ActiveRecord/all
+    RemoteService/sql/mysql/localhost
     ActiveRecord/destroy
     ActiveRecord/ActiveRecordFixtures::Order/destroy
     Database/SQL/insert
@@ -290,6 +291,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
     expected_metrics = %W[
     ActiveRecord/all
     Database/SQL/select
+    RemoteService/sql/mysql/localhost
     ]
 
     assert_calls_unscoped_metrics(*expected_metrics) do
@@ -307,6 +309,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
     expected_metrics = %W[
     ActiveRecord/all
     Database/SQL/other
+    RemoteService/sql/mysql/localhost
     ]
     assert_calls_unscoped_metrics(*expected_metrics) do
       ActiveRecordFixtures::Order.connection.execute "begin"
@@ -322,7 +325,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
     return if isSqlite?
     return if isPostgres?
 
-    expected_metrics = %W[ActiveRecord/all Database/SQL/show]
+    expected_metrics = %W[ActiveRecord/all Database/SQL/show RemoteService/sql/mysql/localhost]
 
     assert_calls_metrics(*expected_metrics) do
       ActiveRecordFixtures::Order.connection.execute "show tables"
@@ -485,7 +488,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
       true
     end
 
-    expected_metrics = %W[ActiveRecord/all Database/SQL/select]
+    expected_metrics = %W[ActiveRecord/all Database/SQL/select RemoteService/sql/mysql/localhost]
 
     assert_calls_metrics(*expected_metrics) do
       begin
@@ -499,6 +502,7 @@ class NewRelic::Agent::Instrumentation::ActiveRecordInstrumentationTest < Test::
     compare_metrics expected_metrics, metrics
     check_metric_count('Database/SQL/select', 1)
     check_metric_count('ActiveRecord/all', 1)
+    check_metric_count('RemoteService/sql/mysql/localhost', 1)
   end
 
   def test_rescue_handling

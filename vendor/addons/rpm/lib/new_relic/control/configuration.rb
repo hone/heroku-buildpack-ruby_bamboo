@@ -36,7 +36,7 @@ module NewRelic
       # Merge the given options into the config options.
       # They might be a nested hash
       def merge_options(options, hash=self)
-        options.each do |key, val |
+        options.each do |key, val|
           case
           when key == :config then next
           when val.is_a?(Hash)
@@ -47,6 +47,28 @@ module NewRelic
             hash[key.to_s] = val
           end
         end
+      end
+
+      def merge_server_side_config(data)
+        remove_server_controlled_configs
+        config = Hash.new
+        data.each_pair do |key, value|
+          if key.include?('.')
+            key = key.split('.')
+            config[key.first] ||= Hash.new
+            config[key.first][key[1]] = value
+          else
+            config[key] = value
+          end
+        end
+        merge_options(config)
+      end
+
+      def remove_server_controlled_configs
+        settings.delete('transaction_tracer')
+        settings.delete('slow_sql')
+        settings.delete('error_collector')
+        settings.delete('capture_params')
       end
 
       def [](key)

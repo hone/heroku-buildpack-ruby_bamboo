@@ -80,14 +80,14 @@ module NewRelic
             rescue Exception => e
               log!("Error installing New Relic Developer Mode: #{e.inspect}", :error)
             end
-          else
+          elsif rails_config
             log!("Developer mode not available for Rails versions prior to 2.2", :warn)
           end
         end
 
         def log!(msg, level=:info)
           if should_log?
-            logger = ::Rails.respond_to?(:logger) ? Rails.logger : ::RAILS_DEFAULT_LOGGER
+            logger = ::Rails.respond_to?(:logger) ? ::Rails.logger : ::RAILS_DEFAULT_LOGGER
             logger.send(level, msg)
           else
             super
@@ -97,7 +97,7 @@ module NewRelic
         end
 
         def to_stdout(message)
-          logger = ::Rails.respond_to?(:logger) ? Rails.logger : ::RAILS_DEFAULT_LOGGER
+          logger = ::Rails.respond_to?(:logger) ? ::Rails.logger : ::RAILS_DEFAULT_LOGGER
           logger.info(message)
         rescue Exception => e
           super
