@@ -68,6 +68,11 @@ class RubyBamboo
     "Ruby/#{language_pack.to_s.capitalize}"
   end
 
+  def detect
+    # match the Build Pack [exit_status, out] interface
+    use? ? [0, name] : [1, "No"]
+  end
+
   def default_process_types
     {"web"    => "thin -p $PORT -e $RACK_ENV -R $HEROKU_RACK start",
      "worker" => bundle_exec("rake jobs:work"),
