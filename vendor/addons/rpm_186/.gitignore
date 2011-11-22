@@ -1,0 +1,13 @@
+.DS\_Store
+.svn/
+*~
+*.rbc
+pkg/
+*.gem
+!rails
+Manifest*
+.idea/
+tmp/
+
+/log/
+/lerg/
