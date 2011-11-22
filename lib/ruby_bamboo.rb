@@ -74,7 +74,7 @@ class RubyBamboo
   end
 
   def default_process_types
-    {"web"    => "thin -p $PORT -e $RACK_ENV -R $HEROKU_RACK start",
+    {"web"    => bundle_exec("thin -p $PORT -e $RACK_ENV -R $HEROKU_RACK start"),
      "worker" => bundle_exec("rake jobs:work"),
      "rake"   => bundle_exec("rake") }
   end
