@@ -13,10 +13,11 @@ def vendor_plugin(git_url)
   end
 end
 
-def vendor_addon(hash)
+def vendor_addon(name, hash)
   git_url = hash[:url]
   tag = hash[:tag]
-  name = File.basename(git_url, File.extname(git_url))
+  name = name.to_s
+  # name = File.basename(git_url, File.extname(git_url))
   Dir.chdir(vendor_base("addons")) do
     FileUtils.rm_rf(name)
     sh "git clone #{git_url} #{name}"
@@ -31,5 +32,5 @@ task "plugins:update" do
   sh "mkdir -p #{vendor_base("plugins").to_s}"
   sh "mkdir -p #{vendor_base("addons").to_s}"
   RubyBamboo::RailsActions::PLUGINS.values.each {|git_url| vendor_plugin(git_url) }
-  RubyBamboo::Addons::ADDONS_REPOS.values.each  {|hash| vendor_addon(hash) }
+  RubyBamboo::Addons::ADDONS_REPOS.each  {|name, hash| vendor_addon(name, hash) }
 end

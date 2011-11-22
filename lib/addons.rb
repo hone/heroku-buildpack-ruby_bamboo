@@ -5,6 +5,7 @@ module RubyBamboo::Addons
     :gmail_smtp       => { :url => 'git://github.com/adamwiggins/gmail_smtp.git' },
     :quick_sendgrid   => { :url => 'git://github.com/pedro/quick_sendgrid.git' },
     :rpm              => { :url => 'git://github.com/newrelic/rpm.git', :tag => "3.3.0" },
+    :rpm_186          => { :url => 'git://github.com/newrelic/rpm.git', :tag => "3.1.2" },
   }
 
   def self.addons_dir
@@ -126,7 +127,9 @@ module RubyBamboo::Addons
   end
 
   def newrelic_plugin_path
-    File.join(RubyBamboo::Addons.addons_dir.full_path, "rpm")
+    dir = (ruby_vm == "mri-1.8.6" ? "rpm_186" : "rpm")
+
+    File.join(RubyBamboo::Addons.addons_dir.full_path, dir)
   end
 
   def install_new_relic
@@ -162,7 +165,7 @@ module RubyBamboo::Addons
       else
         message "       Installing the New Relic plugin..."
         plugins_dir = build_dir['vendor/plugins/'].create
-        plugins_dir.bash "cp -R #{newrelic_plugin_path} ."
+        plugins_dir.bash "cp -R #{newrelic_plugin_path} ./rpm"
         plugins_dir['rpm/.git/'].destroy
         system "chmod -R go+rx #{build_dir['vendor/']}"
         message " done.\n"
