@@ -74,6 +74,7 @@ class RubyBamboo
   end
 
   def default_process_types
+    # web gets overrided by railgun, so it doesn't matter what the value is
     {"web"    => bundle_exec("thin", "-p $PORT -e $RACK_ENV -R $HEROKU_RACK start"),
      "worker" => bundle_exec("rake", "jobs:work"),
      "rake"   => bundle_exec("rake") }
