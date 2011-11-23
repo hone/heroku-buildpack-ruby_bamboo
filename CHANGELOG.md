@@ -1,8 +1,14 @@
-## v3 (11/22/2011)
+## v4 (11/23/2011)
 
 Bugfixes:
 
-* detect in the binary is in the bundle before using bundle exec
+* cd into the right path for bundle binary detection
+
+## v3 (11/22/2011) [failed]
+
+Bugfixes:
+
+* detect the binary is in the bundle before using bundle exec
 
 ## v2 (11/22/2011) [failed]
 
