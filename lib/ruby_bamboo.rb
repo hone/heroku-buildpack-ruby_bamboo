@@ -85,8 +85,13 @@ class RubyBamboo
   end
 
   def bundled?(gem)
-    `bundle show #{gem}`
-    $?.sucess?
+    bundle_cmd = "export PATH=#{ruby_path}; #{bundle_bin}"
+    begin
+      Rush.bash("cd #{build_dir.full_path} && #{bundle_cmd} show #{gem}")
+      true
+    rescue Rush::BashFailed
+      false
+    end
   end
 
   def config_vars
