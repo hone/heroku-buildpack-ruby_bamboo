@@ -79,8 +79,14 @@ class RubyBamboo
      "rake"   => bundle_exec("rake") }
   end
 
-  def bundle_exec(binary)
-    gemfile.exists? ? "bundle exec #{binary}" : binary
+  def bundle_exec(binary, args = "")
+    cmd = (args.empty? ? binary : "#{binary} #{args}")
+    gemfile.exists? && bundled?(binary) ? "bundle exec #{cmd}" : cmd
+  end
+
+  def bundled?(gem)
+    `bundle show #{gem}`
+    $?.sucess?
   end
 
   def config_vars
