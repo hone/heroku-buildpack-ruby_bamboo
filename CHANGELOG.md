@@ -1,4 +1,10 @@
-## v2 (11/22/2011)
+## v3 (11/22/2011)
+
+Bugfixes:
+
+* detect in the binary is in the bundle before using bundle exec
+
+## v2 (11/22/2011) [failed]
 
 Features:
 
