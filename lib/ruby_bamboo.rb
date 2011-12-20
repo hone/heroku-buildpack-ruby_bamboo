@@ -270,9 +270,11 @@ class RubyBamboo
         if windows_lock
           # need to make sure BUNDLE_FROZEN isn't set during windows
           # bundle install
-          yaml_bundler_config = YAML.load_file(bundler_config.to_s)
-          yaml_bundler_config.delete("BUNDLE_FROZEN")
-          bundler_config.write(yaml_bundler_config.to_yaml)
+          if bundler_config.exists?
+            yaml_bundler_config = YAML.load_file(bundler_config.to_s)
+            yaml_bundler_config.delete("BUNDLE_FROZEN")
+            bundler_config.write(yaml_bundler_config.to_yaml)
+          end
 
           lock_file.destroy
           message "       Windows Gemfile.lock detected, ignoring it.\n"
@@ -296,7 +298,7 @@ class RubyBamboo
       end
 
       # set frozen for windows to avoid Gemfile.lock (Errno::EACCES)
-      if windows_lock
+      if windows_lock && bundler_config.exists?
         yaml_bundler_config = YAML.load_file(bundler_config.to_s)
         yaml_bundler_config["BUNDLE_FROZEN"] = "1"
         bundler_config.write(yaml_bundler_config.to_yaml)
