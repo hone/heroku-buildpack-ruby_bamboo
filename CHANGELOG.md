@@ -1,4 +1,10 @@
-## v5 (12/20/2011)
+## v6 (12/20/2011)
+
+Bugfixes:
+
+* make sure `.bundle/config` exists before reading it
+
+## v5 (12/20/2011) [failed]
 
 Features:
 
