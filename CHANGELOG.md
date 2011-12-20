@@ -1,3 +1,9 @@
+## v5 (12/20/2011)
+
+Features:
+
+* set bundle frozen for windows
+
 ## v4 (11/23/2011)
 
 Bugfixes:
