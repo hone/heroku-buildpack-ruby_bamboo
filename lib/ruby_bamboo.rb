@@ -263,9 +263,17 @@ class RubyBamboo
         command += " --without #{bundle_without}"
       end
 
+      windows_lock = false
       lock_file = build_dir['Gemfile.lock']
       if lock_file.exists? # bundler 1.0 likes the lock in git
-        if lock_file.read =~ /^PLATFORMS\s+.*(mingw|mswin)/ # get rid of lock if generated on Windows
+        windows_lock = lock_file.read =~ /^PLATFORMS\s+.*(mingw|mswin)/
+        if windows_lock
+          # need to make sure BUNDLE_FROZEN isn't set during windows
+          # bundle install
+          yaml_bundler_config = YAML.load_file(bundler_config.to_s)
+          yaml_bundler_config.delete("BUNDLE_FROZEN")
+          bundler_config.write(yaml_bundler_config.to_yaml)
+
           lock_file.destroy
           message "       Windows Gemfile.lock detected, ignoring it.\n"
         else
@@ -286,6 +294,14 @@ class RubyBamboo
         message "       FAILED: http://devcenter.heroku.com/articles/bundler\n"
         raise Slug::CompileError, "failed to install gems via Bundler"
       end
+
+      # set frozen for windows to avoid Gemfile.lock (Errno::EACCES)
+      if windows_lock
+        yaml_bundler_config = YAML.load_file(bundler_config.to_s)
+        yaml_bundler_config["BUNDLE_FROZEN"] = "1"
+        bundler_config.write(yaml_bundler_config.to_yaml)
+      end
+
     end
 
     if bundler_gems.exists?
