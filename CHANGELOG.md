@@ -1,3 +1,9 @@
+## v7 (12/27/2011)
+
+Features:
+
+* Upgrade New Relic RPM agent to 3.3.1
+
 ## v6 (12/20/2011)
 
 Bugfixes:
