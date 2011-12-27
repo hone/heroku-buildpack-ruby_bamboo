@@ -1048,7 +1048,7 @@ module NewRelic
           # FIXME add the code to try to resend if our connection is down
           sql_traces = @sql_sampler.harvest
           unless sql_traces.empty?
-            log.debug "Sending (#{sql_traces.count}) sql traces"
+            log.debug "Sending (#{sql_traces.size}) sql traces"
             begin
               response = invoke_remote :sql_trace_data, sql_traces
 #              log.debug "Sql trace response: #{response}"
@@ -1069,9 +1069,6 @@ module NewRelic
           unless @traces.empty?
             now = Time.now
             log.debug "Sending (#{@traces.length}) transaction traces"
-            
-            # REMOVE THIS BEFORE SHIPPING
-            log.info "Sending tts with GUIDS #{@traces.collect{|t| t.guid}.join(",")}"
             
             begin
               options = { :keep_backtraces => true }
@@ -1284,6 +1281,13 @@ module NewRelic
             log.debug "Serializing agent data to disk"
             NewRelic::Agent.save_data
           end
+        rescue Exception => e
+          NewRelic::Control.instance.disable_serialization = true
+          NewRelic::Control.instance.log.warn("Disabling serialization: #{e.message}")
+          retry_count ||= 0
+          retry_count += 1
+          retry unless retry_count > 1
+          raise e
         end
 
         # This method contacts the server to send remaining data and

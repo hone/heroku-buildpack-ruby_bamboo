@@ -9,33 +9,16 @@ module NewRelic::Rack
 
     # method required by Rack interface
     def call(env)
-      
-      req = Rack::Request.new(env)
-      
-      # clear any previous transaction info
-      NewRelic::Agent::TransactionInfo.clear
-      
-      agent_flag = req.cookies['NRAGENT']
-      
-      if agent_flag
-        s = agent_flag.split("=")
-        if s.length == 2
-          if s[0] == "tk" && s[1]
-            NewRelic::Agent::TransactionInfo.get.token = s[1]
-          end
-        end
-      end
-      
       # Two experimental options for allowing TT capture based on http params
       #
-      if req.params['nr_capture_deep_tt']
+      # if req.params['nr_capture_deep_tt']
         # NewRelic::Agent::TransactionInfo.get.force_persist = true
         # NewRelic::Agent::TransactionInfo.get.capture_deep_tt = true
-      end
+      # end
       
-      if req.params['nr_capture_tt']
+      # if req.params['nr_capture_tt']
         # NewRelic::Agent::TransactionInfo.get.force_persist = true
-      end
+      # end
       
       result = @app.call(env)   # [status, headers, response]
       
@@ -44,12 +27,6 @@ module NewRelic::Rack
 
         if response_string
           response = Rack::Response.new(response_string, result[0], result[1])
-
-          if NewRelic::Agent::TransactionInfo.get.token
-            # clear the cookie via expiration in the past
-            response.set_cookie("NRAGENT", {:value => "tk=", :path => "/", :expires => Time.now-(24* 60*60)})
-          end
-
           response.finish
         else
           result

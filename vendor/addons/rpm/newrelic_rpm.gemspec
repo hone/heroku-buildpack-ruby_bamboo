@@ -4,14 +4,20 @@
 # -*- encoding: utf-8 -*-
 
 Gem::Specification.new do |s|
-  s.name = "newrelic_rpm"
-  s.version = "3.3.0"
+  s.name = %q{newrelic_rpm}
+  s.version = "3.3.1"
 
   s.required_rubygems_version = Gem::Requirement.new(">= 0") if s.respond_to? :required_rubygems_version=
   s.authors = ["Bill Kayser", "Jon Guymon", "Justin George", "Darin Swanson"]
-  s.date = "2011-11-07"
-  s.description = "New Relic is a performance management system, developed by New Relic,\nInc (http://www.newrelic.com).  New Relic provides you with deep\ninformation about the performance of your web application as it runs\nin production. The New Relic Ruby Agent is dual-purposed as a either a\nGem or plugin, hosted on\nhttp://github.com/newrelic/rpm/\n"
-  s.email = "support@newrelic.com"
+  s.date = %q{2011-12-15}
+  s.description = %q{New Relic is a performance management system, developed by New Relic,
+Inc (http://www.newrelic.com).  New Relic provides you with deep
+information about the performance of your web application as it runs
+in production. The New Relic Ruby Agent is dual-purposed as a either a
+Gem or plugin, hosted on
+http://github.com/newrelic/rpm/
+}
+  s.email = %q{support@newrelic.com}
   s.executables = ["newrelic_cmd", "newrelic", "mongrel_rpm"]
   s.extra_rdoc_files = [
     "CHANGELOG",
@@ -42,6 +48,7 @@ Gem::Specification.new do |s|
     "lib/new_relic/agent/error_collector.rb",
     "lib/new_relic/agent/instrumentation.rb",
     "lib/new_relic/agent/instrumentation/active_merchant.rb",
+    "lib/new_relic/agent/instrumentation/active_record.rb",
     "lib/new_relic/agent/instrumentation/acts_as_solr.rb",
     "lib/new_relic/agent/instrumentation/authlogic.rb",
     "lib/new_relic/agent/instrumentation/controller_instrumentation.rb",
@@ -58,10 +65,8 @@ Gem::Specification.new do |s|
     "lib/new_relic/agent/instrumentation/rack.rb",
     "lib/new_relic/agent/instrumentation/rails/action_controller.rb",
     "lib/new_relic/agent/instrumentation/rails/action_web_service.rb",
-    "lib/new_relic/agent/instrumentation/rails/active_record_instrumentation.rb",
     "lib/new_relic/agent/instrumentation/rails/errors.rb",
     "lib/new_relic/agent/instrumentation/rails3/action_controller.rb",
-    "lib/new_relic/agent/instrumentation/rails3/active_record_instrumentation.rb",
     "lib/new_relic/agent/instrumentation/rails3/errors.rb",
     "lib/new_relic/agent/instrumentation/sinatra.rb",
     "lib/new_relic/agent/instrumentation/sunspot.rb",

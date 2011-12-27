@@ -231,6 +231,8 @@ module NewRelic
         # If a single argument is passed in, it is treated as a metric
         # path.  This form is deprecated.
         def perform_action_with_newrelic_trace(*args, &block)
+          request = newrelic_request(args)
+          NewRelic::Agent::TransactionInfo.reset(request)
 
           # Skip instrumentation based on the value of 'do_not_trace' and if
           # we aren't calling directly with a block.
@@ -270,6 +272,22 @@ module NewRelic
         end
 
         protected
+
+        def newrelic_request(args)
+          opts = args.first
+          # passed as a parameter to add_transaction_tracer
+          if opts.respond_to?(:keys) && opts.respond_to?(:[]) && opts[:request]
+            opts[:request]
+          # in a Rack app
+          elsif opts.respond_to?(:keys) && opts.respond_to?(:[]) &&
+              opts['rack.version']
+            Rack::Request.new(args)
+          # in a Rails app
+          elsif self.respond_to?(:request)
+            self.request
+          end
+        end
+
         # Should be implemented in the dispatcher class
         def newrelic_response_code; end
 

@@ -14,6 +14,7 @@ require 'rubygems'
 
 begin
   require 'config/environment'
+  # require File.join(File.dirname(__FILE__),'..','..','rpm_test_app','config','environment')
   begin
     require 'test_help'
   rescue LoadError

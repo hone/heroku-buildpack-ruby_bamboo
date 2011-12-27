@@ -11,7 +11,7 @@ class NewRelic::Agent::BrowserMonitoringTest < Test::Unit::TestCase
     @browser_monitoring_key = "fred"
     @episodes_file = "this_is_my_file"
     NewRelic::Agent.instance.instance_eval do
-      @beacon_configuration = NewRelic::Agent::BeaconConfiguration.new({"rum.enabled" => true, "browser_key" => "browserKey", "application_id" => "apId", "beacon"=>"beacon", "episodes_url"=>"this_is_my_file"})
+      @beacon_configuration = NewRelic::Agent::BeaconConfiguration.new({"rum.enabled" => true, "browser_key" => "browserKey", "application_id" => "apId", "beacon"=>"beacon", "episodes_url"=>"this_is_my_file", 'rum.jsonp' => true})
     end
     Thread.current[:last_metric_frame] = nil
     NewRelic::Agent::TransactionInfo.clear
@@ -19,6 +19,26 @@ class NewRelic::Agent::BrowserMonitoringTest < Test::Unit::TestCase
 
   def teardown
     mocha_teardown
+  end
+
+  def test_browser_monitoring_start_time_is_reset_each_request_when_auto_instrument_is_disabled
+    controller = Object.new
+    def controller.perform_action_without_newrelic_trace(method, options={});
+      # noop; instrument me
+    end
+    def controller.newrelic_metric_path; "foo"; end
+    controller.extend ::NewRelic::Agent::Instrumentation::ControllerInstrumentation
+    controller.extend ::NewRelic::Agent::BrowserMonitoring
+    NewRelic::Control.instance['browser_monitoring'] = { 'auto_instrument' => false }
+
+    controller.perform_action_with_newrelic_trace(:index)
+    first_request_start_time = controller.send(:browser_monitoring_start_time)
+    controller.perform_action_with_newrelic_trace(:index)
+    second_request_start_time = controller.send(:browser_monitoring_start_time)
+
+    # assert that these aren't the same time object
+    # the start time should be reinitialized each request to the controller
+    assert !(first_request_start_time.equal? second_request_start_time)
   end
 
   def test_browser_timing_header_with_no_beacon_configuration
@@ -264,12 +284,6 @@ var e=document.createElement("script");'
 
     value = footer_js_string(NewRelic::Agent.instance.beacon_configuration, beacon, license_key, application_id)
     assert_equal("<script type=\"text/javascript\">if (!NREUMQ.f) { NREUMQ.f=function() {\nNREUMQ.push([\"load\",new Date().getTime()]);\nvar e=document.createElement(\"script\");\ne.type=\"text/javascript\";e.async=true;e.src=\"this_is_my_file\";\ndocument.body.appendChild(e);\nif(NREUMQ.a)NREUMQ.a();\n};\nNREUMQ.a=window.onload;window.onload=NREUMQ.f;\n};\nNREUMQ.push([\"nrfj\",\"\",\"\",1,\"most recent transaction\",0,0,new Date().getTime(),\"ABC\",\"0123456789ABCDEF\",\"user\",\"account\",\"product\"])</script>", value, "should return the javascript given some default values")
-  end
-
-  def test_use_nrf2_footer_when_auto_rum_disabled
-    NewRelic::Control.instance['browser_monitoring'] = { 'auto_instrument' => false }
-    value = footer_js_string(NewRelic::Agent.instance.beacon_configuration, '', '', 1)
-    assert_match(/nrf2/, value, "footer should use nrf2 when auto-rum disabled")
   end
 
   def test_html_safe_if_needed_unsafed

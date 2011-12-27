@@ -40,7 +40,7 @@ module NewRelic
                     
           def record_gc_metric(num_calls, elapsed)
             if num_calls > 0
-              # µs to seconds
+              # microseconds to seconds
               elapsed = elapsed / 1_000_000.0
               # Allocate the GC time to a scope as if the GC just ended
               # right now.
@@ -64,8 +64,9 @@ module NewRelic
             ::GC.respond_to?(:time) && ::GC.respond_to?(:collections)
           end
           
+          # microseconds spent in GC
           def call_time
-            ::GC.time
+            ::GC.time # this should already be microseconds
           end
           
           def call_count
@@ -78,8 +79,10 @@ module NewRelic
             defined?(::GC::Profiler) && ::GC::Profiler.enabled?
           end
           
+          # microseconds spent in GC
+          # 1.9 total_time returns seconds.  Don't trust the docs.  It's seconds.
           def call_time
-            ::GC::Profiler.total_time * 1000.0
+            ::GC::Profiler.total_time * 1_000_000.0 # convert seconds to microseconds
           end
           
           def call_count
