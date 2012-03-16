@@ -258,6 +258,11 @@ class RubyBamboo
       # --deployment overwrites BUNDLE_PATH, so need to use --path
       command = "cd #{build_dir.full_path} && #{bundle_cmd} install --path #{bundle_path}"
 
+      # bundler 0.9.9 takes path as an argument, not an option
+      if is_stack?('aspen')
+        command = "cd #{build_dir.full_path} && #{bundle_cmd} install #{bundle_path}"
+      end
+
       if bundle_without && bundle_without.any?
         message "       Using --without #{bundle_without}\n"
         command += " --without #{bundle_without}"
