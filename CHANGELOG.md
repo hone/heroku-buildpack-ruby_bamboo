@@ -1,3 +1,7 @@
+## v8 (03/20/2012)
+
+* Call Bundler 0.9.9 properly on Aspen
+
 ## v7 (12/27/2011)
 
 Features:
