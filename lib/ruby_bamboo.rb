@@ -86,7 +86,7 @@ class RubyBamboo
   end
 
   def bundled?(gem)
-    bundle_cmd = "export PATH=#{ruby_path}; #{bundle_bin}"
+    bundle_cmd = "export PATH=#{ruby_path} LANG=en_US.UTF-8; #{bundle_bin}"
     begin
       Rush.bash("cd #{build_dir.full_path} && #{bundle_cmd} show #{gem}")
       true
@@ -202,7 +202,7 @@ class RubyBamboo
 
     return unless gemfile.exists?
     # run the bundler command straight from the corresponding ruby vm bin folder
-    bundle_cmd = "export PATH=#{ruby_path}; #{bundle_bin}"
+    bundle_cmd = "export PATH=#{ruby_path} LANG=en_US.UTF-8; #{bundle_bin}"
     bundle_version = Rush.bash("#{bundle_cmd} version").strip
 
     message "-----> Gemfile detected, running #{bundle_version}\n"
