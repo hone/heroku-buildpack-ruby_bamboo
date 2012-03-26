@@ -1,3 +1,7 @@
+## v9 (03/26/2012)
+
+* Explicitly set LANG=en_US.UTF-8 before calling Bundler
+
 ## v8 (03/20/2012)
 
 * Call Bundler 0.9.9 properly on Aspen
