@@ -201,8 +201,10 @@ class RubyBamboo
     end
 
     return unless gemfile.exists?
+
+    syck_hack_file = File.expand_path(File.join(File.dirname(__FILE__), "../vendor/syck_hack"))
     # run the bundler command straight from the corresponding ruby vm bin folder
-    bundle_cmd = "export PATH=#{ruby_path} LANG=en_US.UTF-8; #{bundle_bin}"
+    bundle_cmd = "export PATH=#{ruby_path} LANG=en_US.UTF-8; RUBYOPT=\"-r #{syck_hack_file}\" #{bundle_bin}"
     bundle_version = Rush.bash("#{bundle_cmd} version").strip
 
     message "-----> Gemfile detected, running #{bundle_version}\n"
