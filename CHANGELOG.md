@@ -1,3 +1,9 @@
+## v10 (05/02/2012)
+
+Bugfixes:
+
+* syck workaround for yaml/psych issues
+
 ## v9 (03/26/2012)
 
 * Explicitly set LANG=en_US.UTF-8 before calling Bundler
