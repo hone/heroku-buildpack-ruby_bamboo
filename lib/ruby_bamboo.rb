@@ -249,7 +249,9 @@ class RubyBamboo
       gemfile_updated = false
     end
 
-    if check && !gemfile_updated
+    lock_file = build_dir['Gemfile.lock']
+
+    if check && !gemfile_updated && lock_file.exists?
       message "       All dependencies are satisfied\n"
     else
       message "       Unresolved dependencies detected; Installing...\n"
@@ -271,7 +273,6 @@ class RubyBamboo
       end
 
       windows_lock = false
-      lock_file = build_dir['Gemfile.lock']
       if lock_file.exists? # bundler 1.0 likes the lock in git
         windows_lock = lock_file.read =~ /^PLATFORMS\s+.*(mingw|mswin)/
         if windows_lock
