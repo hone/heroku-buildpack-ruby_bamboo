@@ -295,6 +295,12 @@ class RubyBamboo
         message " !     Check Gemfile.lock into git with `git add Gemfile.lock`\n"
         message " !     See http://devcenter.heroku.com/articles/bundler\n"
         message "\n"
+
+        if bundler_config.exists?
+          yaml_bundler_config = YAML.load_file(bundler_config.to_s)
+          yaml_bundler_config.delete("BUNDLE_FROZEN")
+          bundler_config.write(yaml_bundler_config.to_yaml)
+        end
       end
 
       command += " --binstubs"
