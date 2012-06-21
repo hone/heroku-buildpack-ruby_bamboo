@@ -1,3 +1,9 @@
+## v11 (06/21/2012)
+
+Bugfixes:
+
+* hardcode BUNDLE_CONFIG to fix issue since moving to codon
+
 ## v10 (05/02/2012)
 
 Bugfixes:
