@@ -115,8 +115,34 @@ class RubyBamboo
       copy_prebuilt_gems
       install_addons
       workaround_ruby_permissions_bugs
+      setup_profiled
       ruby_finalize
     end
+  end
+
+  def setup_profiled
+    profiled_path = "#{build_dir}/.profile.d"
+
+    FileUtils.mkdir_p profiled_path
+    File.open("#{profiled_path}/ruby_bamboo.sh", "a") do |file|
+      base = "/usr/local/bin:/usr/bin:/bin"
+      path =
+        if ['ree-1.8.7', 'mri-1.8.7'].include?(minor_stack)
+          ".bundle/gems/ruby/1.8/bin/:/usr/ruby1.8.7/bin:#{base}"
+        elsif 'mri-1.9.1' == minor_stack
+          ".bundle/gems/ruby/1.9.1/bin/:/usr/ruby1.9.1/bin:#{base}"
+        elsif 'mri-1.9.2' == minor_stack
+          ".bundle/gems/ruby/1.9.1/bin/:/usr/ruby1.9.2/bin:#{base}"
+        else
+          "/usr/ruby1.8.6/bin:#{base}"
+        end
+
+      file.puts set_env_override("PATH", path)
+    end
+  end
+
+  def set_env_override(key, val)
+    %{export #{key}="#{val.gsub('"','\"')}"}
   end
 
   def ruby_finalize
