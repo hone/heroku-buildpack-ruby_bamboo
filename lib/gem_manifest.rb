@@ -143,7 +143,6 @@ class RubyBamboo::GemManifest
           proxy,
           "--no-ri",
           "--no-rdoc",
-          "--bindir=#{@slug.repo_dir.full_path}bin",
           "--version=#{escape(gem['version'])}",
           gem['source'].map {|s| "-s #{escape(s)}"}.join(" "),
           ("--ignore-dependencies" if gem["ignore-dependencies"])
