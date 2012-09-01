@@ -126,15 +126,16 @@ class RubyBamboo
     FileUtils.mkdir_p profiled_path
     File.open("#{profiled_path}/ruby_bamboo.sh", "a") do |file|
       base = "/usr/local/bin:/usr/bin:/bin"
+      gems_manifest_path = ".gems/bin/"
       path =
         if ['ree-1.8.7', 'mri-1.8.7'].include?(minor_stack)
-          ".bundle/gems/ruby/1.8/bin/:/usr/ruby1.8.7/bin:#{base}"
+          ".bundle/gems/ruby/1.8/bin/:#{gems_manifest_path}:/usr/ruby1.8.7/bin:#{base}"
         elsif 'mri-1.9.1' == minor_stack
-          ".bundle/gems/ruby/1.9.1/bin/:/usr/ruby1.9.1/bin:#{base}"
+          ".bundle/gems/ruby/1.9.1/bin/:#{gems_manifest_path}:/usr/ruby1.9.1/bin:#{base}"
         elsif 'mri-1.9.2' == minor_stack
-          ".bundle/gems/ruby/1.9.1/bin/:/usr/ruby1.9.2/bin:#{base}"
+          ".bundle/gems/ruby/1.9.1/bin/:#{gems_manifest_path}:/usr/ruby1.9.2/bin:#{base}"
         else
-          "/usr/ruby1.8.6/bin:#{base}"
+          "#{gems_manifest_path}:/usr/ruby1.8.6/bin:#{base}"
         end
 
       file.puts set_env_override("PATH", path)
