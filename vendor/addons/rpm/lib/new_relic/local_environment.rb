@@ -14,7 +14,6 @@ module NewRelic
   #
   # NewRelic::LocalEnvironment should be accessed through NewRelic::Control#env (via the NewRelic::Control singleton).
   class LocalEnvironment
-    
     # mongrel, thin, webrick, or possibly nil
     attr_accessor :dispatcher
     # used to distinguish instances of a dispatcher from each other, may be nil
@@ -23,7 +22,7 @@ module NewRelic
     attr_accessor :framework
     # The number of cpus, if detected, or nil - many platforms do not
     # support this :(
-    attr_reader :processors 
+    attr_reader :processors
     alias environment dispatcher
 
     def initialize
@@ -49,7 +48,7 @@ module NewRelic
     def append_environment_value(name, value = nil)
       value = yield if block_given?
       @config[name] = value if value
-    rescue Exception
+    rescue
       # puts "#{e}\n  #{e.backtrace.join("\n  ")}"
       raise if @framework == :test
     end
@@ -58,7 +57,7 @@ module NewRelic
     # of gems - this catches errors that might be raised in the block
     def append_gem_list
       @gems += yield
-    rescue Exception => e
+    rescue => e
       # puts "#{e}\n  #{e.backtrace.join("\n  ")}"
       raise if @framework == :test
     end
@@ -67,7 +66,7 @@ module NewRelic
     # of plugins - this catches errors that might be raised in the block
     def append_plugin_list
       @plugins += yield
-    rescue Exception
+    rescue
       # puts "#{e}\n  #{e.backtrace.join("\n  ")}"
       raise if @framework == :test
     end
@@ -103,11 +102,28 @@ module NewRelic
     end
 
     # See what the number of cpus is, works only on some linux variants
-    def gather_cpu_info
-      return unless File.readable? '/proc/cpuinfo'
+    def gather_cpu_info(proc_file='/proc/cpuinfo')
+      return unless File.readable? proc_file
       @processors = append_environment_value('Processors') do
-        processors = File.readlines('/proc/cpuinfo').select { |line| line =~ /^processor\s*:/ }.size
-        raise "Cannot determine the number of processors in /proc/cpuinfo" unless processors > 0
+        cpuinfo = ''
+        File.open(proc_file) do |f|
+          loop do
+            begin
+              cpuinfo << f.read_nonblock(4096).strip
+            rescue EOFError
+              break
+            rescue Errno::EWOULDBLOCK, Errno::EAGAIN
+              cpuinfo = ''
+              break # don't select file handle, just give up
+            end
+          end
+        end
+        processors = cpuinfo.split("\n").select {|line| line =~ /^processor\s*:/ }.size
+
+        if processors == 0
+          processors = 1 # assume there is at least one processor
+          NewRelic::Agent.logger.warn("Cannot determine the number of processors in #{proc_file}")
+        end
         processors
       end
     end
@@ -155,9 +171,6 @@ module NewRelic
             config['adapter']
           end
         end
-      end
-      append_environment_value 'Database schema version' do
-        ActiveRecord::Migrator.current_version
       end
     end
     
@@ -383,7 +396,7 @@ module NewRelic
     end
 
     def check_for_passenger
-      if (defined?(::Passenger) && defined?(::Passenger::AbstractServer)) || defined?(::IN_PHUSION_PASSENGER)
+      if defined?(::PhusionPassenger)
         @dispatcher = :passenger
       end
     end

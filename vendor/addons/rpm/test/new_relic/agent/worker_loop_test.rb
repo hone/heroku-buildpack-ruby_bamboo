@@ -19,11 +19,28 @@ class NewRelic::Agent::WorkerLoopTest < Test::Unit::TestCase
     assert @x
   end
 
+  def test_with_duration
+    worker_loop = NewRelic::Agent::WorkerLoop.new(:duration => 0.1)
+    count = 0
+    worker_loop.run(0.04) do
+      count += 1
+    end
+
+    assert_equal 2, count
+  end
+
+  def test_loop_limit
+    worker_loop = NewRelic::Agent::WorkerLoop.new(:limit => 2)
+    iterations = 0
+    worker_loop.run(0) { iterations += 1 }
+    assert_equal 2, iterations
+  end
+
   def test_density
     # This shows how the tasks stay aligned with the period and don't drift.
     count = 0
     start = Time.now
-    @worker_loop.run(0.01) do
+    @worker_loop.run(0.03) do
       count +=1
       if count == 3
         @worker_loop.stop
@@ -31,8 +48,9 @@ class NewRelic::Agent::WorkerLoopTest < Test::Unit::TestCase
       end
     end
     elapsed = Time.now - start
-    assert_in_delta 0.03, elapsed, 0.02
+    assert_in_delta 0.09, elapsed, 0.03
   end
+
   def test_task_error__standard
     @logger.expects(:debug)
     @logger.expects(:error)
@@ -45,7 +63,8 @@ class NewRelic::Agent::WorkerLoopTest < Test::Unit::TestCase
     end
     assert done
   end
-  class BadBoy < Exception; end
+
+  class BadBoy < StandardError; end
 
   def test_task_error__exception
     @logger.expects(:error).once
@@ -55,6 +74,7 @@ class NewRelic::Agent::WorkerLoopTest < Test::Unit::TestCase
       raise BadBoy, "oops"
     end
   end
+
   def test_task_error__server
     @logger.expects(:error).never
     @logger.expects(:debug).once

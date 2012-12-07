@@ -18,7 +18,8 @@ module NewRelic
           end
           
           sql, name, binds = args
-          metric = metric_for_name(name) || metric_for_sql(sql)
+          metric = metric_for_name(NewRelic::Helper.correctly_encoded(name)) ||
+            metric_for_sql(NewRelic::Helper.correctly_encoded(sql))
           
           if !metric
             log_without_newrelic_instrumentation(*args, &block)
@@ -99,11 +100,7 @@ DependencyDetection.defer do
   end
 
   depends_on do
-    !NewRelic::Control.instance['skip_ar_instrumentation']
-  end
-
-  depends_on do
-    !NewRelic::Control.instance['disable_activerecord_instrumentation']
+    !NewRelic::Agent.config[:disable_activerecord_instrumentation]
   end
   
   executes do
