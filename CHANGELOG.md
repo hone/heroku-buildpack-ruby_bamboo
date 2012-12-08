@@ -1,3 +1,9 @@
+## v12 (12/08/2012)
+
+Bugfixes:
+
+* Security fix, bump New Relic to 3.5.3.25
+
 ## v11 (06/21/2012)
 
 Bugfixes:
