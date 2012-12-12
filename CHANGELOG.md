@@ -1,3 +1,9 @@
+## v13 (12/11/2012)
+
+Bugfixes:
+
+* fix issue with NR agent and JSON marshalling
+
 ## v12 (12/08/2012)
 
 Bugfixes:
