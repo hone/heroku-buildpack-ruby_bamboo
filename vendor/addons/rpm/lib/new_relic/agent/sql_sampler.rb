@@ -71,7 +71,7 @@ module NewRelic
 
         if data.sql_data.size > 0
           @samples_lock.synchronize do
-            NewRelic::Agent.instance.log.debug "Harvesting #{data.sql_data.size} slow transaction sql statement(s)"
+            ::NewRelic::Agent.logger.debug "Harvesting #{data.sql_data.size} slow transaction sql statement(s)"
             #FIXME get tx name and uri
             harvest_slow_sql data
           end
@@ -189,7 +189,7 @@ module NewRelic
         @params = {} #FIXME
         @sql_id = consistent_hash(normalized_query)
         set_primary slow_sql, path, uri
-        record_data_point slow_sql.duration
+        record_data_point(float(slow_sql.duration))
       end
 
       def set_primary(slow_sql, path, uri)
@@ -207,7 +207,7 @@ module NewRelic
           set_primary slow_sql, path, uri
         end
 
-        record_data_point slow_sql.duration
+        record_data_point(float(slow_sql.duration))
       end
 
       def prepare_to_send
@@ -223,30 +223,22 @@ module NewRelic
         Agent.config[:'slow_sql.explain_enabled']
       end
 
-      def to_collector_array(marshaller)
-        params = if marshaller.respond_to?(:encode_compress)
-          marshaller.encode_compress(@params)
-        else
-          @params
-        end
+      include NewRelic::Coerce
 
-        [ @path, @url, @sql_id, @sql, @database_metric_name, @call_count,
+      def to_collector_array(encoder)
+        [ string(@path),
+          string(@url),
+          int(@sql_id),
+          string(@sql),
+          string(@database_metric_name),
+          int(@call_count),
           Helper.time_to_millis(@total_call_time),
           Helper.time_to_millis(@min_call_time),
           Helper.time_to_millis(@max_call_time),
-          params ]
+          encoder.encode(@params) ]
       end
 
       private
-
-      def compress(data)
-        if NewRelic::Agent::NewRelicService::JsonMarshaller.is_supported?
-          require 'json'
-          Base64.encode64(Zlib::Deflate.deflate(JSON.dump(data), Zlib::DEFAULT_COMPRESSION))
-        else
-          data
-        end
-      end
 
       def consistent_hash(string)
         # need to hash the same way in every process

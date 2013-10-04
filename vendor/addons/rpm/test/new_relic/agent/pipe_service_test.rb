@@ -14,7 +14,27 @@ class PipeServiceTest < Test::Unit::TestCase
   def test_connect_returns_nil
     assert_nil @service.connect({}) 
   end
-  
+
+  # a #session method is required of services, though in the case of the
+  # PipeService all it does is invoke the block it's passed.
+  def test_session_invokes_block
+    block_ran = false
+    @service.session do
+      block_ran = true
+    end
+    assert(block_ran)
+  end
+
+  def test_write_to_missing_pipe_logs_error
+    service = NewRelic::Agent::PipeService.new(:non_existant)
+    ::NewRelic::Agent.logger.expects(:error) \
+      .with(regexp_matches(/Unable to send data to parent process/)).once
+
+    assert_nothing_raised do
+      service.metric_data(Time.now, Time.now, {})
+    end
+  end
+
   if NewRelic::LanguageSupport.can_fork? &&
       !NewRelic::LanguageSupport.using_version?('1.9.1')
 

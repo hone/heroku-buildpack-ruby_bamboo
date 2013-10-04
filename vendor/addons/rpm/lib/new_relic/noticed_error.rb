@@ -1,3 +1,5 @@
+require 'new_relic/helper'
+
 # This class encapsulates an error that was noticed by New Relic in a managed app.
 class NewRelic::NoticedError
   extend NewRelic::CollectionHelper
@@ -15,6 +17,14 @@ class NewRelic::NoticedError
       @message = exception.original_exception.message.to_s
     else
       @message = (exception || '<no message>').to_s
+    end
+
+    unless @message.is_a?(String)
+      # In pre-1.9.3, Exception.new({}).to_s.class != String
+      # That is, Exception#to_s may not return a String instance if one wasn't
+      # passed in upon creation of the Exception. So, try to generate a useful
+      # String representation of the exception message, falling back to failsafe
+      @message = String(@message.inspect) rescue '<unknown message type>'
     end
 
     # clamp long messages to 4k so that we don't send a lot of
@@ -37,8 +47,13 @@ class NewRelic::NoticedError
     end
   end
 
-  def to_collector_array(marshaller=nil)
-    [ (@timestamp.to_f * 1000).round, @path, @message, @exception_class,
+  include NewRelic::Coerce
+
+  def to_collector_array(encoder=nil)
+    [ NewRelic::Helper.time_to_millis(@timestamp),
+      string(@path),
+      string(@message),
+      string(@exception_class),
       @params ]
   end
 end

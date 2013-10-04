@@ -10,15 +10,22 @@ module NewRelic
         def env
           @env ||= RAILS_ENV.dup
         end
+
+        # Rails can return an empty string from this method, causing
+        # the agent not to start even when it is properly in a rails 3
+        # application, so we test the value to make sure it actually
+        # has contents, and bail to the parent class if it is empty.
         def root
-          if defined?(RAILS_ROOT) && RAILS_ROOT.to_s != ''
-            RAILS_ROOT.to_s
+          root = rails_root.to_s
+          if !root.empty?
+            root
           else
             super
           end
         end
-        def logger
-          ::RAILS_DEFAULT_LOGGER
+
+        def rails_root
+          RAILS_ROOT if defined?(RAILS_ROOT)
         end
 
         def rails_config
@@ -46,11 +53,25 @@ module NewRelic
           if !Agent.config[:agent_enabled]
             # Might not be running if it does not think mongrel, thin, passenger, etc
             # is running, if it thinks it's a rake task, or if the agent_enabled is false.
-            log!("New Relic Agent not running.", :debug)
+            ::NewRelic::Agent.logger.info("New Relic Agent not running.")
           else
-            log! "Starting the New Relic Agent."
-            install_developer_mode rails_config if Agent.config[:developer_mode]
+            ::NewRelic::Agent.logger.info("Starting the New Relic Agent.")
+            install_developer_mode(rails_config) if Agent.config[:developer_mode]
             install_browser_monitoring(rails_config)
+            install_agent_hooks(rails_config)
+          end
+        end
+
+        def install_agent_hooks(config)
+          return if @agent_hooks_installed
+          @agent_hooks_installed = true
+          return if config.nil? || !config.respond_to?(:middleware)
+          begin
+            require 'new_relic/rack/agent_hooks'
+            config.middleware.use NewRelic::Rack::AgentHooks
+            ::NewRelic::Agent.logger.debug("Installed New Relic Agent Hooks middleware")
+          rescue => e
+            ::NewRelic::Agent.logger.warn("Error installing New Relic Agent Hooks middleware", e)
           end
         end
 
@@ -61,9 +82,9 @@ module NewRelic
           begin
             require 'new_relic/rack/browser_monitoring'
             config.middleware.use NewRelic::Rack::BrowserMonitoring
-            log!("Installed New Relic Browser Monitoring middleware", :info)
+            ::NewRelic::Agent.logger.debug("Installed New Relic Browser Monitoring middleware")
           rescue => e
-            log!("Error installing New Relic Browser Monitoring middleware: #{e.inspect}", :error)
+            ::NewRelic::Agent.logger.warn("Error installing New Relic Browser Monitoring middleware", e)
           end
         end
 
@@ -79,33 +100,15 @@ module NewRelic
               # a webserver process
               if @local_env.dispatcher_instance_id
                 port = @local_env.dispatcher_instance_id.to_s =~ /^\d+/ ? ":#{local_env.dispatcher_instance_id}" : ":port"
-                log!("NewRelic Agent Developer Mode enabled.")
-                log!("To view performance information, go to http://localhost#{port}/newrelic")
+                ::NewRelic::Agent.logger.debug("NewRelic Agent Developer Mode enabled.")
+                ::NewRelic::Agent.logger.debug("To view performance information, go to http://localhost#{port}/newrelic")
               end
             rescue => e
-              log!("Error installing New Relic Developer Mode: #{e.inspect}", :error)
+              ::NewRelic::Agent.logger.warn("Error installing New Relic Developer Mode", e)
             end
           elsif rails_config
-            log!("Developer mode not available for Rails versions prior to 2.2", :warn)
+            ::NewRelic::Agent.logger.warn("Developer mode not available for Rails versions prior to 2.2")
           end
-        end
-
-        def log!(msg, level=:info)
-          if should_log?
-            logger = ::Rails.respond_to?(:logger) ? ::Rails.logger : ::RAILS_DEFAULT_LOGGER
-            logger.send(level, msg)
-          else
-            super
-          end
-        rescue => e
-          super
-        end
-
-        def to_stdout(message)
-          logger = ::Rails.respond_to?(:logger) ? ::Rails.logger : ::RAILS_DEFAULT_LOGGER
-          logger.info(message)
-        rescue => e
-          super
         end
 
         def rails_version

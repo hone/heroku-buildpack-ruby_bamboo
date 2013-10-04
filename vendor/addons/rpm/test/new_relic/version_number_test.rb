@@ -82,8 +82,16 @@ class NewRelic::VersionNumberTest < Test::Unit::TestCase
     assert v0 < '1.2.0.1'
     assert v0 > '1.1.0.1'
   end
+
   def test_string
     assert_equal '1.2.0', NewRelic::VersionNumber.new('1.2.0').to_s
     assert_equal '1.2', NewRelic::VersionNumber.new('1.2').to_s
+  end
+
+  def test_build_version_string
+    version_string = NewRelic::VERSION.build_version_string(1, 2, 3, '4.beta')
+    assert_equal('1.2.3.4.beta', version_string)
+    version_string = NewRelic::VERSION.build_version_string(1, 2, 3, nil)
+    assert_equal('1.2.3', version_string)
   end
 end

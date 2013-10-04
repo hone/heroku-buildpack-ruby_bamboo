@@ -5,11 +5,12 @@ DependencyDetection.defer do
 
   depends_on do
     defined?(::Sinatra) && defined?(::Sinatra::Base) &&
-      Sinatra::Base.private_method_defined?(:dispatch!)
+      Sinatra::Base.private_method_defined?(:dispatch!) &&
+      Sinatra::Base.private_method_defined?(:process_route)
   end
 
   executes do
-    NewRelic::Agent.logger.debug 'Installing Sinatra instrumentation'
+    ::NewRelic::Agent.logger.info 'Installing Sinatra instrumentation'
   end
 
   executes do
@@ -45,8 +46,20 @@ module NewRelic
           perform_action_with_newrelic_trace(:category => :sinatra,
                                              :name => txn_name,
                                              :params => @request.params) do
-            dispatch_without_newrelic
+            result = dispatch_without_newrelic
+
+            # Will only see an error raised if :show_exceptions is true, but
+            # will always see them in the env hash if they occur
+            had_error = env.has_key?('sinatra.error')
+            ::NewRelic::Agent.notice_error(env['sinatra.error']) if had_error
+
+            result
           end
+        end
+
+        # Define Request Header accessor for Sinatra
+        def newrelic_request_headers
+          request.env
         end
 
         module NewRelic

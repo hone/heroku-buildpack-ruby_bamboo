@@ -44,7 +44,6 @@ end
 
 require 'test/unit'
 require 'shoulda'
-require 'test_contexts'
 require 'mocha'
 
 begin # 1.8.6
@@ -53,7 +52,27 @@ begin # 1.8.6
 rescue LoadError
 end
 
-require 'new_relic/fake_service'
+def default_service(stubbed_method_overrides = {})
+  service = stub
+  stubbed_method_defaults = {
+    :connect => {},
+    :shutdown => nil,
+    :agent_id= => nil,
+    :agent_id => nil,
+    :collector => stub_everything,
+    :request_timeout= =>  nil,
+    :metric_data => nil,
+    :error_data => nil,
+    :transaction_sample_data => nil,
+    :get_agent_commands => []
+  }
+
+  service.stubs(stubbed_method_defaults.merge(stubbed_method_overrides))
+
+  # When session gets called yield to the given block.
+  service.stubs(:session).yields
+  service
+end
 
 class Test::Unit::TestCase
   include Mocha::API
@@ -134,6 +153,33 @@ def with_config(config_hash, level=0)
     yield
   ensure
     NewRelic::Agent.config.remove_config(config)
+  end
+end
+
+# Need to be a bit sloppy when testing against the logging--let everything
+# through, but check we (at least) get our particular message we care about
+def expects_logging(level, *with_params)
+  ::NewRelic::Agent.logger.stubs(level)
+  ::NewRelic::Agent.logger.expects(level).with(*with_params).once
+end
+
+def expects_no_logging(level)
+  ::NewRelic::Agent.logger.expects(level).never
+end
+
+# Sometimes need to test cases where we muddle with the global logger
+# If so, use this method to ensure it gets restored after we're done
+def without_logger
+  logger = ::NewRelic::Agent.logger
+  ::NewRelic::Agent.logger = nil
+  yield
+ensure
+  ::NewRelic::Agent.logger = logger
+end
+
+module NewRelic
+  def self.fixture_path(name)
+    File.join(File.dirname(__FILE__), 'fixtures', name)
   end
 end
 

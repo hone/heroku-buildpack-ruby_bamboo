@@ -31,13 +31,18 @@ module NewRelic
       # instance variable accumulator. this is harvested when we send
       # data to the server
       def dispatcher_finish(end_time = nil)
+        # If #dispatcher_start hasn't been called at least once, abort early
+        return unless Thread.current[:busy_entries]
+
         end_time ||= time_now
         callers = Thread.current[:busy_entries] -= 1
+
         # Ignore nested calls
         return if callers > 0
+
         @lock.synchronize do
           if @entrypoint_stack.empty?
-            NewRelic::Agent.logger.error("Stack underflow tracking dispatcher entry and exit!\n  #{caller.join("  \n")}")
+            ::NewRelic::Agent.logger.warn("Stack underflow tracking dispatcher entry and exit!\n  #{caller.join("  \n")}")
           else
             @accumulator += (end_time - @entrypoint_stack.pop).to_f
           end
@@ -85,7 +90,7 @@ module NewRelic
 
         busy = busy / time_window
 
-        instance_busy_stats.record_data_point busy
+        instance_busy_stats.record_data_point busy if Agent.config[:report_instance_busy]
         @harvest_start = t0
       end
 

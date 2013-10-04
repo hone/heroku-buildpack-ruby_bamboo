@@ -1,21 +1,24 @@
-suite_condition("Resque not compatible with 1.8.6") do
-  RUBY_VERSION != '1.8.6'
+suite_condition("Resque tests not compatible with 1.8.6, JRuby") do
+  RUBY_VERSION != '1.8.6' && RUBY_PLATFORM != 'java'
 end
 
 gemfile <<-RB
   gem 'resque'
   gem 'json'
+  gem 'rake'
   if (RUBY_PLATFORM == 'java')
     gem "jruby-openssl"
   end
 RB
 
 before_suite do
-  system('echo "daemonize yes" | redis-server -')
+  ENV["NEWRELIC_MULTIVERSE_REDIS_PORT"] = (20_000 + ($$ % 10_000)).to_s
+  ENV["NEWRELIC_MULTIVERSE_FAKE_COLLECTOR_PORT"] = (30_000 + ($$ % 10_000)).to_s
+  system("echo 'port #{ENV["NEWRELIC_MULTIVERSE_REDIS_PORT"]}' | redis-server - > /dev/null &")
 end
 
 after_suite do
-  system('redis-cli shutdown')
+  system("redis-cli -p #{ENV["NEWRELIC_MULTIVERSE_REDIS_PORT"]} shutdown")
 end
 
 execute_mode 'spawn'

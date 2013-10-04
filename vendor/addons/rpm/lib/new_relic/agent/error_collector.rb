@@ -21,6 +21,8 @@ module NewRelic
       # Returns a new error collector
       def initialize
         @errors = []
+        @seen_error_ids = []
+
         # lookup of exception class names to ignore.  Hash for fast access
         @ignore = {}
         @capture_source = Agent.config[:'error_collector.capture_source']
@@ -29,7 +31,7 @@ module NewRelic
         @lock = Mutex.new
 
         Agent.config.register_callback(:'error_collector.enabled') do |config_enabled|
-          log.debug "Errors will #{config_enabled ? '' : 'not '}be sent to the New Relic service."
+          ::NewRelic::Agent.logger.debug "Errors will #{config_enabled ? '' : 'not '}be sent to the New Relic service."
         end
         Agent.config.register_callback(:'error_collector.ignore_errors') do |ignore_errors|
           initialize_ignored_errors(ignore_errors)
@@ -66,7 +68,7 @@ module NewRelic
       def ignore(errors)
         errors.each do |error|
           @ignore[error] = true
-          log.debug("Ignoring errors of type '#{error}'")
+          ::NewRelic::Agent.logger.debug("Ignoring errors of type '#{error}'")
         end
       end
 
@@ -92,7 +94,11 @@ module NewRelic
         end
 
         # Increments a statistic that tracks total error rate
-        def increment_error_count!
+        # Be sure not to double-count same exception. This clears per harvest.
+        def increment_error_count!(exception)
+          return if @seen_error_ids.include?(exception.object_id)
+          @seen_error_ids << exception.object_id
+
           NewRelic::Agent.get_stats("Errors/all").increment_count
         end
 
@@ -102,7 +108,7 @@ module NewRelic
         def should_exit_notice_error?(exception)
           if enabled?
             if !error_is_ignored?(exception)
-              increment_error_count!
+              increment_error_count!(exception)
               return exception.nil? # exit early if the exception is nil
             end
           end
@@ -193,7 +199,7 @@ module NewRelic
         # the maximum limit, and logs a warning if we are over the limit.
         def over_queue_limit?(message)
           over_limit = (@errors.length >= MAX_ERROR_QUEUE_LENGTH)
-          log.warn("The error reporting queue has reached #{MAX_ERROR_QUEUE_LENGTH}. The error detail for this and subsequent errors will not be transmitted to New Relic until the queued errors have been sent: #{message}") if over_limit
+          ::NewRelic::Agent.logger.warn("The error reporting queue has reached #{MAX_ERROR_QUEUE_LENGTH}. The error detail for this and subsequent errors will not be transmitted to New Relic until the queued errors have been sent: #{message}") if over_limit
           over_limit
         end
 
@@ -211,6 +217,7 @@ module NewRelic
 
       include NoticeError
 
+
       # Notice the error with the given available options:
       #
       # * <tt>:uri</tt> => The request path, minus any request params or query string.
@@ -223,12 +230,13 @@ module NewRelic
       # If exception is nil, the error count is bumped and no traced error is recorded
       def notice_error(exception, options={})
         return if should_exit_notice_error?(exception)
+        NewRelic::Agent.instance.events.notify(:notice_error, exception, options)
         action_path     = fetch_from_options(options, :metric, (NewRelic::Agent.instance.stats_engine.scope_name || ''))
         exception_options = error_params_from_options(options).merge(exception_info(exception))
         add_to_error_queue(NewRelic::NoticedError.new(action_path, exception_options, exception))
         exception
       rescue => e
-        log.error("Error capturing an error #{e}")
+        ::NewRelic::Agent.logger.warn("Failure when capturing error '#{exception}':", e)
       end
 
       # Get the errors currently queued up.  Unsent errors are left
@@ -238,17 +246,15 @@ module NewRelic
           errors = @errors
           @errors = []
 
+          # Only expect to re-see errors on same request, so clear on harvest
+          @seen_error_ids = []
+
           if unsent_errors && !unsent_errors.empty?
             errors = unsent_errors + errors
           end
 
           errors
         end
-      end
-
-      private
-      def log
-        NewRelic::Agent.logger
       end
     end
   end

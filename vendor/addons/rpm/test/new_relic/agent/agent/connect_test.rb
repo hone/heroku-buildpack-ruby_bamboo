@@ -8,18 +8,23 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
   def setup
     @connected = nil
     @keep_retrying = nil
-    @connect_attempts = 1
+    @connect_attempts = 0
     @connect_retry_period = 0
     @transaction_sampler = NewRelic::Agent::TransactionSampler.new
     @sql_sampler = NewRelic::Agent::SqlSampler.new
+    @error_collector = NewRelic::Agent::ErrorCollector.new
     server = NewRelic::Control::Server.new('localhost', 30303)
     @service = NewRelic::Agent::NewRelicService.new('abcdef', server)
-    log.stubs(:warn => true, :info => true, :debug => true)
+    @test_config = { :developer_mode => true }
+    NewRelic::Agent.config.apply_config(@test_config)
+  end
+
+  def teardown
+    NewRelic::Agent.config.remove_config(@test_config)
   end
 
   def control
-    fake_control = OpenStruct.new('validate_seed' => false,
-                                  'local_env' => OpenStruct.new('snapshot' => []))
+    fake_control = OpenStruct.new('local_env' => OpenStruct.new('snapshot' => []))
     fake_control.instance_eval do
       def [](key)
         return nil
@@ -28,116 +33,55 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
     fake_control
   end
 
-  def test_tried_to_connect?
-    # base case, should default to false
-    assert !tried_to_connect?({})
+  def test_should_connect_if_pending
+    @connect_state = :pending
+    assert(should_connect?, "should attempt to connect if pending")
   end
 
-  def test_tried_to_connect_connected
-    # is true if connected is true.
-    @connected = true
-    assert tried_to_connect?({})
+  def test_should_not_connect_if_disconnected
+    @connect_state = :disconnected
+    assert(!should_connect?, "should not attempt to connect if force disconnected")
   end
 
-  def test_tried_to_connect_forced
-    # is false if force_reconnect is true
-    assert !tried_to_connect?({:force_reconnect => true})
-  end
-
-  def test_should_keep_retrying_base
-    # default to true
-    should_keep_retrying?({})
-    assert @keep_retrying, "should keep retrying by default"
-  end
-
-  def test_should_keep_retrying_option_true
-    # should be true if keep_retrying is true
-    should_keep_retrying?({:keep_retrying => true})
-  end
-
-  def test_get_retry_period
-    (1..6).each do |x|
-      @connect_attempts = x
-      assert_equal get_retry_period, x * 60, "should be #{x} minutes"
-    end
-    @connect_attempts = 100
-    assert_equal get_retry_period, 600, "should max out at 10 minutes after 6 tries"
+  def test_should_connect_if_forced
+    @connect_state = :disconnected
+    assert(should_connect?(true), "should connect if forced")
+    @connect_state = :connected
+    assert(should_connect?(true), "should connect if forced")
   end
 
   def test_increment_retry_period
-    @connect_retry_period = 0
-    @connect_attempts = 1
-    assert_equal 0, connect_retry_period
-    increment_retry_period!
-    assert_equal 60, connect_retry_period
-  end
-
-  def test_should_retry_true
-    @keep_retrying = true
-    @connect_attempts = 1
-    log.expects(:info).once
-    self.expects(:increment_retry_period!).once
-    assert should_retry?, "should retry in this circumstance"
-    assert_equal 2, @connect_attempts, "should be on the second attempt"
-  end
-
-  def test_should_retry_false
-    @keep_retrying = false
-    self.expects(:disconnect).once
-    assert !should_retry?
+    10.times do |i|
+      assert_equal((i * 60), connect_retry_period)
+      note_connect_failure
+    end
+    assert_equal(600, connect_retry_period)
   end
 
   def test_disconnect
     assert disconnect
   end
 
-  def test_attr_accessor_connect_retry_period
-    assert_accessor(:connect_retry_period)
-  end
-
-  def test_attr_accessor_connect_attempts
-    assert_accessor(:connect_attempts)
-  end
-
   def test_log_error
-    error = mock('error')
-    error.expects(:backtrace).once.returns(["line", "secondline"])
-    error.expects(:message).once.returns("message")
-    fake_control = mock()
-    fake_control.expects(:server).returns("server")
-    self.expects(:control).once.returns(fake_control)
-    log.expects(:error).with("Error establishing connection with New Relic Service at server: message")
-    log.expects(:debug).with("line\nsecondline")
+    error = StandardError.new("message")
+
+    expects_logging(:error, 
+      includes("Error establishing connection with New Relic Service"), \
+      instance_of(StandardError))
+
     log_error(error)
   end
 
   def test_handle_license_error
-    error = mock('error')
+    error = mock(:message => "error message")
     self.expects(:disconnect).once
-    log.expects(:error).once.with("error message")
-    log.expects(:info).once.with("Visit NewRelic.com to obtain a valid license key, or to upgrade your account.")
-    error.expects(:message).returns("error message")
     handle_license_error(error)
   end
 
-  def test_log_seed_token
-    with_config(:validate_seed => 'many seeds', :validate_token => 'a token, man') do
-      log.expects(:debug).with("Connecting with validation seed/token: many seeds/a token, man").once
-      log_seed_token
-    end
-  end
-
-  def test_no_seed_token
-    with_config(:validate_seed => false) do
-      log.expects(:debug).never
-      log_seed_token
-    end
-  end
-
   def test_environment_for_connect_positive
-    fake_env = mock('local_env')
-    fake_env.expects(:snapshot).once.returns("snapshot")
-    NewRelic::Control.instance.expects(:local_env).once.returns(fake_env)
+    fake_env = stub('local_env', :discovered_dispatcher => nil)
+    fake_env.expects(:snapshot).returns("snapshot")
+    NewRelic::Control.instance.expects(:local_env).at_least_once.returns(fake_env)
     with_config(:send_environment_info => true) do
       assert_equal 'snapshot', environment_for_connect
     end
@@ -149,62 +93,20 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
     end
   end
 
-  def test_validate_settings
-    with_config(:validate_seed => 'seed', :validate_token => 'token') do
-      assert_equal 'seed', NewRelic::Agent.instance.validate_settings[:seed]
-      assert_equal 'token', NewRelic::Agent.instance.validate_settings[:token]
-    end
-  end
-
   def test_connect_settings
     control = mocked_control
     NewRelic::Agent.config.expects(:app_names)
-    self.expects(:validate_settings)
     self.expects(:environment_for_connect)
-    keys = %w(pid host app_name language agent_version environment settings validate)
+    keys = %w(pid host app_name language agent_version environment settings)
     value = connect_settings
     keys.each do |k|
       assert(value.has_key?(k.to_sym), "should include the key #{k}")
     end
   end
 
-  def test_configure_error_collector_base
-    error_collector = NewRelic::Agent::ErrorCollector.new
-    NewRelic::Control.instance.log.stubs(:debug)
-    NewRelic::Control.instance.log.expects(:debug) \
-      .with("Errors will not be sent to the New Relic service.").at_least_once
-    with_config(:'error_collector.enabled' => false) do
-      # noop
-    end
-  end
-
-  def test_configure_error_collector_enabled
-    with_config(:'error_collector.enabled' => false) do
-      error_collector = NewRelic::Agent::ErrorCollector.new
-      NewRelic::Control.instance.log.stubs(:debug)
-      NewRelic::Control.instance.log.expects(:debug) \
-        .with("Errors will be sent to the New Relic service.").at_least_once
-      with_config(:'error_collector.enabled' => true) do
-        # noop
-      end
-    end
-  end
-
-  def test_configure_error_collector_server_disabled
-    error_collector = NewRelic::Agent::ErrorCollector.new
-    NewRelic::Control.instance.log.stubs(:debug)
-    NewRelic::Control.instance.log.expects(:debug) \
-      .with("Errors will not be sent to the New Relic service.").at_least_once
-    config = NewRelic::Agent::Configuration::ServerSource.new('collect_errors' => false)
-    with_config(config) do
-      # noop
-    end
-  end
-
   def test_configure_transaction_tracer_with_random_sampling
     with_config(:'transaction_tracer.transaction_threshold' => 5,
                 :'transaction_tracer.random_sample' => true) do
-      log.stubs(:debug)
       sample = TransactionSampleTestHelper.make_sql_transaction
       @transaction_sampler.store_sample(sample)
 
@@ -225,9 +127,6 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
   end
 
   def test_configure_transaction_tracer_server_disabled
-    @transaction_sampler.stubs(:log).returns(log)
-    log.stubs(:debug)
-    log.expects(:debug).with('Transaction traces will not be sent to the New Relic service.')
     config = NewRelic::Agent::Configuration::ServerSource.new('collect_traces' => false,
                                                               'developer_mode' => false)
     with_config(config) do
@@ -284,9 +183,8 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
 
   def test_connect_to_server_gets_config_from_collector
     NewRelic::Agent.manual_start
-    service = NewRelic::FakeService.new
-    NewRelic::Agent::Agent.instance.service = service
-    service.mock['connect'] = {'agent_run_id' => 23, 'config' => 'a lot'}
+    NewRelic::Agent::Agent.instance.service = default_service(
+      :connect => {'agent_run_id' => 23, 'config' => 'a lot'})
 
     response = NewRelic::Agent.agent.connect_to_server
 
@@ -315,19 +213,17 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
     end
   end
 
+
   def test_logging_collector_messages
     NewRelic::Agent.manual_start
-    service = NewRelic::FakeService.new
-    NewRelic::Agent::Agent.instance.service = service
-    service.mock['connect'] = {
-      'agent_run_id' => 23, 'config' => 'a lot',
-      'messages' => [{ 'message' => 'beep boop', 'level' => 'INFO' },
-                     { 'message' => 'ha cha cha', 'level' => 'WARN' }]
-    }
+    NewRelic::Agent::Agent.instance.service = default_service(
+      :connect => {
+        'messages' => [{ 'message' => 'beep boop', 'level' => 'INFO' },
+                       { 'message' => 'ha cha cha', 'level' => 'WARN' }]
+      })
 
-    NewRelic::Control.instance.log.stubs(:info)
-    NewRelic::Control.instance.log.expects(:info).with('beep boop')
-    NewRelic::Control.instance.log.expects(:warn).with('ha cha cha')
+    expects_logging(:info, 'beep boop')
+    expects_logging(:warn, 'ha cha cha')
 
     NewRelic::Agent.agent.query_server_for_configuration
     NewRelic::Agent.shutdown
@@ -339,22 +235,6 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
     assert_equal 'blah', @service.agent_id
   end
 
-  # no idea why this test leaks in Rails 2.0
-  # will be moved to a multiverse test eventually anyway
-  if !Rails::VERSION::STRING =~ /2\.0.*/
-    def test_set_apdex_t_from_server
-      service = NewRelic::FakeService.new
-      NewRelic::Agent::Agent.instance.service = service
-      service.mock['connect'] = { 'apdex_t' => 0.5 }
-      with_config(:sync_startup => true, :monitor_mode => true,
-                  :license_key => 'a' * 40) do
-        NewRelic::Agent.manual_start
-        assert_equal 0.5, NewRelic::Agent.config[:apdex_t]
-        NewRelic::Agent.shutdown
-      end
-    end
-  end
-
   private
 
   def mocked_control
@@ -363,27 +243,9 @@ class NewRelic::Agent::Agent::ConnectTest < Test::Unit::TestCase
     fake_control
   end
 
-  def mocked_log
-    fake_log = mock('log')
-    self.stubs(:log).returns(fake_log)
-    fake_log
-  end
-
   def mocked_error_collector
     fake_collector = mock('error collector')
     self.stubs(:error_collector).returns(fake_collector)
     fake_collector
-  end
-
-  def log
-    @logger ||= Object.new
-  end
-
-  def assert_accessor(sym)
-    var_name = "@#{sym}"
-    instance_variable_set(var_name, 1)
-    assert (self.send(sym) == 1)
-    self.send(sym.to_s + '=', 10)
-    assert (instance_variable_get(var_name) == 10)
   end
 end

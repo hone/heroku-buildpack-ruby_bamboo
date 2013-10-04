@@ -1,11 +1,22 @@
 #!/usr/bin/ruby
+
 module NewRelic
   module VERSION #:nodoc:
+    def self.build_version_string(*parts)
+      parts.compact.join('.')
+    end
+
     MAJOR = 3
     MINOR = 5
-    TINY  = 3
-    BUILD = nil
-    STRING = [MAJOR, MINOR, TINY, BUILD].compact.join('.')
+    TINY  = 7
+
+    begin
+      require File.join(File.dirname(__FILE__), 'build')
+    rescue LoadError => e
+      BUILD = nil
+    end
+
+    STRING = build_version_string(MAJOR, MINOR, TINY, BUILD)
   end
 
   # Helper class for managing version comparisons

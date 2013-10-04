@@ -1,5 +1,6 @@
 require 'forwardable'
 require 'new_relic/agent/configuration/defaults'
+require 'new_relic/agent/configuration/mask_defaults'
 require 'new_relic/agent/configuration/yaml_source'
 require 'new_relic/agent/configuration/server_source'
 require 'new_relic/agent/configuration/environment_source'
@@ -19,9 +20,14 @@ module NewRelic
         end
 
         def apply_config(source, level=0)
+          was_finished = finished_configuring?
+
           invoke_callbacks(:add, source)
           @config_stack.insert(level, source.freeze)
           reset_cache
+          log_config(:add, source)
+
+          notify_finished_configuring if !was_finished && finished_configuring?
         end
 
         def remove_config(source=nil)
@@ -32,6 +38,7 @@ module NewRelic
           end
           reset_cache
           invoke_callbacks(:remove, source)
+          log_config(:remove, source)
         end
 
         def replace_or_add_config(source, level=0)
@@ -83,20 +90,39 @@ module NewRelic
           end
         end
 
-        def flattened_config
+        def notify_finished_configuring
+          NewRelic::Agent.instance.events.notify(:finished_configuring)
+        end
+
+        def finished_configuring?
+          @config_stack.any? {|s| s.is_a?(ServerSource)}
+        end
+
+        def flattened
           @config_stack.reverse.inject({}) do |flat,layer|
             thawed_layer = layer.dup
             thawed_layer.each do |k,v|
               begin
                 thawed_layer[k] = instance_eval(&v) if v.respond_to?(:call)
               rescue => e
-                NewRelic::Control.instance.log.debug("#{e.class.name} : #{e.message} - when accessing config key #{k}")
+                ::NewRelic::Agent.logger.debug("#{e.class.name} : #{e.message} - when accessing config key #{k}")
                 thawed_layer[k] = nil
               end
               thawed_layer.delete(:config)
             end
             flat.merge(thawed_layer)
           end
+        end
+
+        def apply_mask(hash)
+          MASK_DEFAULTS. \
+            select {|_, proc| proc.call}. \
+            each {|key, _| hash.delete(key) }
+          hash
+        end
+
+        def to_collector_hash
+          DottedHash.new(apply_mask(flattened)).to_hash
         end
 
         def app_names
@@ -109,6 +135,12 @@ module NewRelic
 
         def reset_cache
           @cache = Hash.new {|hash,key| hash[key] = self.fetch(key) }
+        end
+
+        def log_config(direction, source)
+          ::NewRelic::Agent.logger.debug(
+            "Updating config (#{direction}) from #{source.class}. Results:",
+            flattened.inspect)
         end
       end
     end

@@ -60,7 +60,7 @@ module NewRelic
             if specifiers.empty?
               self.newrelic_write_attr property, true
             elsif ! (Hash === specifiers)
-              logger.error "newrelic_#{property} takes an optional hash with :only and :except lists of actions (illegal argument type '#{specifiers.class}')"
+              ::NewRelic::Agent.logger.error "newrelic_#{property} takes an optional hash with :only and :except lists of actions (illegal argument type '#{specifiers.class}')"
             else
               self.newrelic_write_attr property, specifiers
             end
@@ -159,7 +159,7 @@ module NewRelic
             alias_method method.to_s, with_method_name
             send visibility, method
             send visibility, with_method_name
-            NewRelic::Control.instance.log.debug("Traced transaction: class = #{self.name}, method = #{method.to_s}, options = #{options.inspect}")
+            ::NewRelic::Agent.logger.debug("Traced transaction: class = #{self.name}, method = #{method.to_s}, options = #{options.inspect}")
           end
         end
 
@@ -269,9 +269,10 @@ module NewRelic
                 else
                   perform_action_without_newrelic_trace(*args)
                 end
-                if defined?(request) && request && defined?(response) &&
-                    response && !Agent.config[:disable_mobile_headers]
-                  NewRelic::Agent::BrowserMonitoring.insert_mobile_response_header(request, response)
+                if defined?(request) && request && defined?(response) && response
+                  if !Agent.config[:disable_mobile_headers]
+                    NewRelic::Agent::BrowserMonitoring.insert_mobile_response_header(request, response)
+                  end
                 end
                 result
               rescue => e
@@ -437,23 +438,20 @@ module NewRelic
           end
         end
 
-        include NewRelic::Agent::Instrumentation::QueueTime
-
         # Return a Time instance representing the upstream start time.
         # now is a Time instance to fall back on if no other candidate
         # for the start time is found.
         def _detect_upstream_wait(now)
-          queue_start = nil
           if newrelic_request_headers
-            queue_start = parse_frontend_headers(newrelic_request_headers)
+            queue_start = QueueTime.parse_frontend_timestamp(newrelic_request_headers, now)
+            QueueTime.record_frontend_metrics(queue_start, now) if queue_start
           end
           queue_start || now
         rescue => e
-          NewRelic::Control.instance.log.error("Error detecting upstream wait time: #{e}")
-          NewRelic::Control.instance.log.debug("#{e.backtrace[0..20]}")
+          ::NewRelic::Agent.logger.error("Error detecting upstream wait time:", e)
           now
         end
-        
+
         # returns the NewRelic::MethodTraceStats object associated
         # with the dispatcher time measurement
         def _dispatch_stat

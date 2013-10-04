@@ -1,6 +1,155 @@
 
 # New Relic Ruby Agent Release Notes #
 
+## v3.5.7 ##
+
+  * Resolved some issues with tracking of frontend queue time, particularly
+    when the agent is running on an app hosted on Heroku.  The agent will now
+    more reliably parse the headers described in
+    https://newrelic.com/docs/features/tracking-front-end-time and will
+    automatically detect whether the times provided are in seconds,
+    milliseconds or microseconds.
+
+## v3.5.6 ##
+
+  * Use HTTPS by default
+
+    The agent now defaults to using SSL when it communicates with New Relic's
+    servers.  By defaults already configured, New Relic does not transmit any
+    sensitive information (e.g. SQL parameters are masked), but SSL adds 
+    another layer of security.  Upgrading customers may need to remove the
+    "ssl: false" directive from their newrelic.yml to enable ssl.  Customers on
+    Jruby may need to install the jruby-openssl gem to take advantage of this
+    feature.
+
+  * Fix two Resque-related issues
+
+    Fixes a possible hang on exit of an instrumented Resque master process
+    (https://github.com/defunkt/resque/issues/578), as well as a file descriptor
+    leak that could occur during startup of the Resque master process.
+
+  * Fix for error graph over 100%
+
+    Some errors were double counted toward the overall error total. This
+    resulted in graphs with error percentages over 100%. This duplication did
+    not impact the specific error traces captured, only the total metric.
+
+  * Notice gracefully handled errors in Sinatra
+
+    When show_exceptions was set to false in Sinatra, errors weren't caught
+    by New Relic's error collector. Now handled errors also have the chance
+    to get reported back.
+
+  * Ruby 2.0 compatibility fixes
+
+    Ruby 2.0 no longer finds protected methods by default, but will with a flag.
+    http://tenderlovemaking.com/2012/09/07/protected-methods-and-ruby-2-0.html
+
+    Thanks Ravil Bayramgalin and Charlie Somerville for the fixes.
+
+  * Auto-detect Trinidad as dispatcher
+
+    Code already existing for detecting Trinidad as a dispatcher, but was only
+    accessible via an ENV variable. This now auto-detects on startup. Thanks
+    Robert Rasmussen for catching that.
+
+  * Coercion of types in collector communication
+
+    Certain metrics can be recorded with a Ruby Rational type, which JSON
+    serializes as a string rather than a floating point value. We now treat
+    coerce each outgoing value, and log issues before sending the data.
+
+  * Developer mode fix for chart error
+
+    Added require to fix a NameError in developer mode for summary page. Thanks
+    to Ryan B. Harvey.
+
+  * Don't touch deprecated RAILS_ROOT if on Rails 3
+
+    Under some odd startup conditions, we would look for the RAILS_ROOT constant
+    after failing to find the ::Rails.root in a Rails 3 app, causing deprecation
+    warnings. Thanks for Adrian Irving-Beer for the fix.
+
+## v3.5.5 ##
+
+  * Add thread profiling support
+
+    Thread profiling performs statistical sampling of backtraces of all threads
+    within your Ruby processes. This feature requires MRI >= 1.9.2, and is
+    controlled via the New Relic web UI. JRuby support (in 1.9.x compat mode) is
+    considered experimental, due to issues with JRuby's Thread#backtrace.
+
+  * Add audit logging capability
+
+    The agent can now log all of the data it sends to the New Relic servers to
+    a special log file for human inspection. This feature is off by default, and
+    can be enabled by setting the audit_log.enabled configuration key to true.
+    You may also control the location of the audit log with the audit_log.path key. 
+
+  * Use config system for dispatcher, framework, and config file detection
+
+    Several aspects of the agent's configuration were not being handled by the
+    configuration system.  Detection/configuration of the dispatcher (e.g. passenger,
+    unicorn, resque), framework (e.g. rails3, sinatra), and newrelic.yml
+    location are now handled via the Agent environment, manual, and default
+    configuration sources.
+
+  * Updates to logging across the agent
+
+    We've carefully reviewed the logging messages that the agent outputs, adding
+    details in some cases, and removing unnecessary clutter. We've also altered
+    the startup sequence to ensure that we don't spam STDOUT with messages
+    during initialization.
+
+  * Fix passing environment to manual_start()
+
+    Thanks to Justin Hannus.  The :env key, when passed to Agent.manual_start,
+    can again be used to specify which section of newrelic.yml is loaded.
+
+  * Rails 4 support
+
+    This release includes preliminary support for Rails 4 as of 4.0.0.beta.
+    Rails 4 is still in development, but the agent should work as expected for
+    people who are experimenting with the beta.
+
+## v3.5.4 ##
+
+  * Add queue time support for sinatra apps
+
+    Sinatra applications can now take advantage of front end queue time
+    reporting. Thanks to Winfield Peterson for this contribution.
+
+  * Simplify queue time configuration for nginx 1.2.6+
+
+    Beginning in version 1.2.6, recently released as a development version, the
+    $msec variable can be used to set an http header.  This change allows front
+    end queue time to be tracked in New Relic simply by adding this line to the
+    nginx config:
+
+    proxy_set_header X-Queue-Start "t=${msec}000"
+
+    It will no longer be necessary to compile a patched version of nginx or
+    compile in the perl or lua module to enable this functionality.
+
+    Thanks to Lawrence Pit for the contribution.
+
+  * Report back build number and stage along with version info
+
+    In the 3.5.3 series the agent would fail to report its full version number
+    to NewRelic's environment report.  For example it would report its version
+    as 3.5.3 instead of 3.5.3.25 or 3.5.3.25.beta.  The agent will now report
+    its complete version number as defined in newrelic_rpm.gemspec.
+
+  * The host and the port that the agent reports to can now be set from environment vars
+
+    The host can be set with NEW_RELIC_HOST and the port with NEW_RELIC_PORT.  These setting
+    will overrride any other settings in your newrelic.yml.
+
+  * Fix RUM reporting to multiple applications
+
+    When the agent is configured to report to multiple "roll up" applications
+    RUM did not work correctly.
+
 ## v3.5.3 ##
 
   * Update the collector protocol to use JSON and Ruby primitives

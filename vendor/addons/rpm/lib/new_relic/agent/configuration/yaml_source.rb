@@ -7,11 +7,13 @@ module NewRelic
         attr_accessor :file_path
 
         def initialize(path, env)
+          ::NewRelic::Agent.logger.debug("Reading configuration from #{path}")
+
           config = {}
           begin
             @file_path = File.expand_path(path)
             if !File.exists?(@file_path)
-              NewRelic::Control.instance.log.error("Unable to load configuration from #{path}")
+              ::NewRelic::Agent.logger.error("Unable to load configuration from #{path}")
               return
             end
 
@@ -23,9 +25,13 @@ module NewRelic
             license_key = ''
 
             erb = ERB.new(file).result(binding)
-            config = merge!(YAML.load(erb)[env] || {})
+            confighash = YAML.load(erb)
+            ::NewRelic::Agent.logger.error("Config (#{path}) doesn't include a '#{env}' environment!") unless
+              confighash.key?(env)
+
+            config = merge!(confighash[env] || {})
           rescue ScriptError, StandardError => e
-            NewRelic::Control.instance.log.warn("Unable to read configuration file: #{e}")
+            ::NewRelic::Agent.logger.error("Unable to read configuration file #{path}: #{e}")
           end
 
           if config['transaction_tracer'] &&
