@@ -16,6 +16,7 @@ class RubyBamboo
   attr_reader :language_pack
 
   def initialize(args)
+    message "default encoding: #{Encoding.default_external}"
     @build_dir = Rush[args[:build_dir] + "/"]
     @repo_dir = Rush[args[:repo_dir] + "/"]
     @head = args[:head]
@@ -104,19 +105,28 @@ class RubyBamboo
 
   RUBY_STACKS = %w{aspen-mri-1.8.6 bamboo-ree-1.8.7 bamboo-edge bamboo-mri-1.9.1 bamboo-mri-1.9.2}
   def compile(extend_compile_timeout=false)
-    if RUBY_STACKS.include?(target_stack)
-      run_rails_actions
-      check_for_dot_gems_and_gemfile
-      build_gems_manifest
-      build_bundler
-      create_database_yml
-      ruby_prune_build_dir
-      copy_prebuilt_gems
-      install_addons
-      workaround_ruby_permissions_bugs
-      setup_profiled
-      ruby_finalize
+    utf8_encoding do
+      if RUBY_STACKS.include?(target_stack)
+        run_rails_actions
+        check_for_dot_gems_and_gemfile
+        build_gems_manifest
+        build_bundler
+        create_database_yml
+        ruby_prune_build_dir
+        copy_prebuilt_gems
+        install_addons
+        workaround_ruby_permissions_bugs
+        setup_profiled
+        ruby_finalize
+      end
     end
+  end
+
+  def utf8_encoding
+    old_encoding = Encoding.default_external
+    Encoding.default_external = Encoding::UTF_8
+    yield
+    Encoding.default_external = old_encoding
   end
 
   def setup_profiled
