@@ -26,7 +26,7 @@ module RubyBamboo::Addons
   end
 
   def install_addons
-    SystemTimer.timeout(60) do
+    Timeout.timeout(60) do
       install_hoptoad if addons.include? 'hoptoad'
       install_exceptional if addons.any? { |a| a =~ /^exceptional/ }
       install_gmail_smtp if addons.include? 'gmail_smtp'

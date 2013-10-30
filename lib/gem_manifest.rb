@@ -103,7 +103,7 @@ class RubyBamboo::GemManifest
       nil
     end
 
-    def install_gems(data, extra_gems = [])
+    def install_gems(data, extra_gems=[])
       prepare_build_dir
       begin
         ::RubyBamboo::GemManifest.new(data, extra_gems).gems.each { |gem| install(gem) }

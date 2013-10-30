@@ -10,7 +10,6 @@ class RubyBamboo
   def self.load
     require "rubygems"
     require "rush"
-    require "system_timer"
   end
 
   attr_reader :repo_dir, :build_dir, :head, :prev, :stack, :requested_stack, :env, :heroku_log_token, :addons, :addons_stacks
@@ -80,7 +79,7 @@ class RubyBamboo
      "rake"   => bundle_exec("rake") }
   end
 
-  def bundle_exec(binary, args = "")
+  def bundle_exec(binary, args="")
     cmd = (args.empty? ? binary : "#{binary} #{args}")
     gemfile.exists? && bundled?(binary) ? "bundle exec #{cmd}" : cmd
   end
@@ -104,7 +103,7 @@ class RubyBamboo
   end
 
   RUBY_STACKS = %w{aspen-mri-1.8.6 bamboo-ree-1.8.7 bamboo-edge bamboo-mri-1.9.1 bamboo-mri-1.9.2}
-  def compile
+  def compile(extend_compile_timeout=false)
     if RUBY_STACKS.include?(target_stack)
       run_rails_actions
       check_for_dot_gems_and_gemfile
@@ -204,7 +203,7 @@ class RubyBamboo
   end
 
   def dot_gems_exists?
-    `git --git-dir #{repo_dir.full_path} ls-tree #{head}`.grep(/\s\.gems$/).any?
+    `git --git-dir #{repo_dir.full_path} ls-tree #{head}`.split("\n").grep(/\s\.gems$/).any?
   end
 
   def check_for_dot_gems_and_gemfile
@@ -294,7 +293,7 @@ class RubyBamboo
         command = "cd #{build_dir.full_path} && #{bundle_cmd} install #{bundle_path}"
       end
 
-      if bundle_without && bundle_without.any?
+      if bundle_without && bundle_without != ""
         message "       Using --without #{bundle_without}\n"
         command += " --without #{bundle_without}"
       end
